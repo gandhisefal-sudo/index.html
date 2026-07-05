@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transshipment Station Quantity Accumulator</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; background: #f4f6f9; color: #333; }
+        .container { max-width: 700px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto; }
+        h2 { color: #0066c0; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        textarea { width: 100%; height: 150px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 15px; resize: vertical; }
+        button { padding: 10px 15px; font-size: 13px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; margin-bottom: 5px; }
+        .process-btn { background: #28a745; color: white; }
+        .sort-btn { background: #0066c0; color: white; }
+        .clear-btn { background: #d9534f; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #0066c0; color: white; text-align: left; padding: 10px; font-size: 14px; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; font-size: 13px; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .total-row { font-weight: bold; background: #eaedd0 !important; }
+        .sort-controls { margin-top: 15px; background: #f1f1f1; padding: 10px; border-radius: 4px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 Unified Station Quantity Accumulator</h2>
+    <p style="font-size: 13px; color: #666;">Paste the copied lists from all your different portal tabs consecutively into the box below, then hit calculate.</p>
+    
+    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
+    
+    <div>
+        <button class="process-btn" onclick="calculateTotals()">➕ Process & Sum Quantities</button>
+        <button class="clear-btn" onclick="clearAll()">🗑️ Reset</button>
+    </div>
+
+    <div id="sortControls" class="sort-controls">
+        <span style="font-size: 12px; font-weight: bold; margin-right: 10px; color: #555;">🔀 SORT BY:</span>
+        <button class="sort-btn" onclick="sortData('name', 'asc')">🔤 Station (A-Z)</button>
+        <button class="sort-btn" onclick="sortData('name', 'desc')">🔤 Station (Z-A)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'desc')">🔢 Qty (High to Low)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'asc')">🔢 Qty (Low to High)</button>
+    </div>
+
+    <table id="resultTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>Station ID</th>
+                <th>Total Combined Quantity</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    let currentSortedList = []; // Array tracking data structures for easy active sorting
+
+    function calculateTotals() {
+        let rawText = document.getElementById("inputBox").value.trim();
+        if (!rawText) {
+            alert("Please paste some data first!");
+            return;
+        }
+
+        let lines = rawText.split('\n');
+        let accumulatedData = {};
+        
+        lines.forEach(line => {
+            if (!line.trim()) return;
+            
+            let parts = line.split(/\t+/);
+            if (parts.length < 2) {
+                parts = line.split(/\s{2,}/); 
+            }
+            
+            if (parts.length >= 2) {
+                let station = parts[0].trim().toUpperCase();
+                let qty = parseInt(parts[1].trim(), 10) || 0;
+                
+                if (station) {
+                    if (accumulatedData[station]) {
+                        accumulatedData[station] += qty;
+                    } else {
+                        accumulatedData[station] = qty;
+                    }
+                }
+            }
+        });
+
+        // Convert the tracking object into a sortable array structure
+        currentSortedList = Object.keys(accumulatedData).map(key => {
+            return { station: key, qty: accumulatedData[key] };
+        });
+
+        if (currentSortedList.length > 0) {
+            // Default load setup displays Station names alphabetically (A-Z)
+            sortData('name', 'asc');
+            document.getElementById("sortControls").style.display = "block";
+        }
+    }
+
+    function sortData(type, direction) {
+        if (currentSortedList.length === 0) return;
+
+        if (type === 'name') {
+            currentSortedList.sort((a, b) => {
+                return direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station);
+            });
+        } else if (type === 'qty') {
+            currentSortedList.sort((a, b) => {
+                return direction === 'asc' ? a.qty - b.qty : b.qty - a.qty;
+            });
+        }
+
+        renderTable();
+    }
+
+    function renderTable() {
+        let tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        let totalSum = 0;
+
+        currentSortedList.forEach(item => {
+            totalSum += item.qty;
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-family: monospace; font-weight: bold;">${item.station}</td>
+                    <td style="color: #0066c0; font-weight: bold;">${item.qty}</td>
+                </tr>`;
+        });
+
+        tbody.innerHTML += `
+            <tr class="total-row">
+                <td>GRAND TOTAL ITEMS</td>
+                <td>${totalSum}</td>
+            </tr>`;
+
+        document.getElementById("resultTable").style.display = "table";
+    }
+
+    function clearAll() {
+        currentSortedList = [];
+        document.getElementById("inputBox").value = "";
+        document.getElementById("tableBody").innerHTML = "";
+        document.getElementById("resultTable").style.display = "none";
+        document.getElementById("sortControls").style.display = "none";
+    }
+</script>
+
+</body>
+</html>
