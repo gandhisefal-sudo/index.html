@@ -1,117 +1,191 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Transshipment Station Quantity Accumulator</title>
-    <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 30px; background: #f4f6f9; color: #333; }
-        .container { max-width: 700px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 0 auto; }
-        h2 { color: #0066c0; margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        textarea { width: 100%; height: 150px; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 13px; margin-bottom: 15px; resize: vertical; }
-        button { padding: 10px 15px; font-size: 13px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; margin-right: 8px; margin-bottom: 5px; }
-        .process-btn { background: #28a745; color: white; }
-        .sort-btn { background: #0066c0; color: white; }
-        .clear-btn { background: #d9534f; color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #0066c0; color: white; text-align: left; padding: 10px; font-size: 14px; }
-        td { padding: 10px; border-bottom: 1px solid #ddd; font-size: 13px; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        .total-row { font-weight: bold; background: #eaedd0 !important; }
-        .sort-controls { margin-top: 15px; background: #f1f1f1; padding: 10px; border-radius: 4px; display: none; }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h2>📊 Unified Station Quantity Accumulator</h2>
-    <p style="font-size: 13px; color: #666;">Paste the copied lists from all your different portal tabs consecutively into the box below, then hit calculate.</p>
-    
-    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
-    
-    <div>
-        <button class="process-btn" onclick="calculateTotals()">➕ Process & Sum Quantities</button>
-        <button class="clear-btn" onclick="clearAll()">🗑️ Reset</button>
-    </div>
-
-    <div id="sortControls" class="sort-controls">
-        <span style="font-size: 12px; font-weight: bold; margin-right: 10px; color: #555;">🔀 SORT BY:</span>
-        <button class="sort-btn" onclick="sortData('name', 'asc')">🔤 Station (A-Z)</button>
-        <button class="sort-btn" onclick="sortData('name', 'desc')">🔤 Station (Z-A)</button>
-        <button class="sort-btn" onclick="sortData('qty', 'desc')">🔢 Qty (High to Low)</button>
-        <button class="sort-btn" onclick="sortData('qty', 'asc')">🔢 Qty (Low to High)</button>
-    </div>
-
-    <table id="resultTable" style="display: none;">
-        <thead>
-            <tr>
-                <th>Station ID</th>
-                <th>Total Combined Quantity</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
-</div>
-
 <script>
-    let currentSortedList = []; // Array tracking data structures for easy active sorting
+    let accumulatedDataGlobal = {};
+    let currentSortedList = [];
+    let expandedStations = new Set();
 
     function calculateTotals() {
-        let rawText = document.getElementById("inputBox").value.trim();
-        if (!rawText) {
-            alert("Please paste some data first!");
+        let rawText = document.getElementById("inputBox").value;
+        if (!rawText.trim()) {
+            alert("Please paste data into the box first!");
             return;
         }
 
+        // FIX 1: Clear out old data from memory before calculating new data
+        accumulatedDataGlobal = {}; 
+
+        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        let parsedSuccessfully = false;
+
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
+                try {
+                    let parsedJson = JSON.parse(block);
+                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+                    processJsonArray(normalizedArray, accumulatedDataGlobal);
+                    parsedSuccessfully = true;
+                } catch (e) {
+                    console.error("Failed parsing JSON block:", e);
+                }
+            });
+        }
+
+        if (!parsedSuccessfully) {
+            processTextFallback(sanitizedText, accumulatedDataGlobal);
+        }
+
+        currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
+            let itemData = accumulatedDataGlobal[key];
+            let finalStationQty = 0;
+            itemData.containers.forEach(c => {
+                finalStationQty += c.qty;
+            });
+
+            return { 
+                station: key, 
+                qty: finalStationQty, 
+                containers: itemData.containers 
+            };
+        });
+
+        if (currentSortedList.length > 0) {
+            sortData('name', 'asc');
+            document.getElementById("sortControls").style.display = "block";
+            document.getElementById("resultTable").style.display = "table";
+            // FIX 2: Removed document.getElementById("inputBox").value = ""; so text stays visible
+        } else {
+            alert("No valid DZ-P or BUFFER data rows were identified. Check your selection.");
+        }
+    }
+
+    function extractTopLevelJSONBlocks(text) {
+        let blocks = [];
+        let bracketCount = 0;
+        let braceCount = 0;
+        let startIdx = -1;
+        let inString = false;
+
+        for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            if (char === '"' && text[i - 1] !== '\\') {
+                inString = !inString;
+                continue;
+            }
+            if (!inString) {
+                if (char === '[' || char === '{') {
+                    if (bracketCount === 0 && braceCount === 0) startIdx = i;
+                    if (char === '[') bracketCount++;
+                    if (char === '{') braceCount++;
+                } else if (char === ']' || char === '}') {
+                    if (char === ']') bracketCount--;
+                    if (char === '}') braceCount--;
+                    if (bracketCount === 0 && braceCount === 0 && startIdx !== -1) {
+                        blocks.push(text.substring(startIdx, i + 1));
+                        startIdx = -1;
+                    }
+                }
+            }
+        }
+        return blocks;
+    }
+
+    function processJsonArray(array, targetMap) {
+        array.forEach(item => {
+            let station = item.station?.toUpperCase().trim();
+            if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+            
+            if (!targetMap[station]) {
+                targetMap[station] = { qty: 0, containers: [] };
+            }
+            
+            if (item.containers && Array.isArray(item.containers)) {
+                item.containers.forEach(newContainer => {
+                    let containerIdClean = newContainer.containerId?.trim();
+                    if (!containerIdClean) return;
+
+                    let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
+                    
+                    if (!existingContainer) {
+                        let containerCopy = {
+                            containerId: containerIdClean,
+                            qty: parseInt(newContainer.qty, 10) || 0,
+                            items: []
+                        };
+                        if (newContainer.items && Array.isArray(newContainer.items)) {
+                            newContainer.items.forEach(it => {
+                                containerCopy.items.push({ sku: it.sku, qty: parseInt(it.qty, 10) || 0 });
+                            });
+                        }
+                        targetMap[station].containers.push(containerCopy);
+                    } else {
+                        if (newContainer.items && Array.isArray(newContainer.items)) {
+                            newContainer.items.forEach(newSkuItem => {
+                                let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
+                                let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                                
+                                if (!existingSku) {
+                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                    existingContainer.qty += incomingSkuQty;
+                                } else {
+                                    if (existingSku.qty !== incomingSkuQty) {
+                                        existingSku.qty += incomingSkuQty;
+                                        existingContainer.qty += incomingSkuQty;
+                                    }
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function processTextFallback(rawText, targetMap) {
         let lines = rawText.split('\n');
-        let accumulatedData = {};
-        
         lines.forEach(line => {
             if (!line.trim()) return;
-            
             let parts = line.split(/\t+/);
-            if (parts.length < 2) {
-                parts = line.split(/\s{2,}/); 
-            }
+            if (parts.length < 2) parts = line.split(/\s{2,}/); 
             
             if (parts.length >= 2) {
                 let station = parts[0].trim().toUpperCase();
+                if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+
                 let qty = parseInt(parts[1].trim(), 10) || 0;
+                if (!targetMap[station]) {
+                    targetMap[station] = { qty: 0, containers: [] };
+                }
                 
-                if (station) {
-                    if (accumulatedData[station]) {
-                        accumulatedData[station] += qty;
-                    } else {
-                        accumulatedData[station] = qty;
+                let fallbackToteId = "MANUAL-PASTE-TOTAL";
+                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
+                
+                if (!existingContainer) {
+                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
+                } else {
+                    if (existingContainer.qty !== qty) {
+                        existingContainer.qty += qty;
                     }
                 }
             }
         });
+    }
 
-        // Convert the tracking object into a sortable array structure
-        currentSortedList = Object.keys(accumulatedData).map(key => {
-            return { station: key, qty: accumulatedData[key] };
-        });
-
-        if (currentSortedList.length > 0) {
-            // Default load setup displays Station names alphabetically (A-Z)
-            sortData('name', 'asc');
-            document.getElementById("sortControls").style.display = "block";
+    function toggleStation(stationName) {
+        if (expandedStations.has(stationName)) {
+            expandedStations.delete(stationName);
+        } else {
+            expandedStations.add(stationName);
         }
+        renderTable();
     }
 
     function sortData(type, direction) {
         if (currentSortedList.length === 0) return;
-
         if (type === 'name') {
-            currentSortedList.sort((a, b) => {
-                return direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station);
-            });
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station));
         } else if (type === 'qty') {
-            currentSortedList.sort((a, b) => {
-                return direction === 'asc' ? a.qty - b.qty : b.qty - a.qty;
-            });
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.qty - b.qty : b.qty - a.qty);
         }
-
         renderTable();
     }
 
@@ -122,30 +196,91 @@
 
         currentSortedList.forEach(item => {
             totalSum += item.qty;
-            tbody.innerHTML += `
-                <tr>
-                    <td style="font-family: monospace; font-weight: bold;">${item.station}</td>
-                    <td style="color: #0066c0; font-weight: bold;">${item.qty}</td>
-                </tr>`;
+            let hasExtraData = item.containers && item.containers.length > 0;
+            let isExpanded = expandedStations.has(item.station);
+            
+            let tr = document.createElement("tr");
+            if (hasExtraData) {
+                tr.className = "station-row-interactive";
+                tr.onclick = () => toggleStation(item.station);
+            }
+            
+            tr.innerHTML = `
+                <td style="font-family: monospace; font-weight: bold;">
+                    ${hasExtraData ? `<span class="toggle-indicator">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                    ${item.station}
+                </td>
+                <td style="color: #0066c0; font-weight: bold;">
+                    ${item.qty}
+                    ${hasExtraData && item.containers[0].containerId !== "MANUAL-PASTE-TOTAL" ? `<span class="badge">${item.containers.length} Totes</span>` : ''}
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            if (hasExtraData && isExpanded) {
+                let nestedTr = document.createElement("tr");
+                nestedTr.className = "nested-row";
+                let isManual = item.containers[0].containerId === "MANUAL-PASTE-TOTAL";
+                
+                let innerHtmlMarkup = `
+                    <td colspan="2">
+                        <div class="nested-container-box">
+                            <div class="nested-title">${isManual ? '📋 Plain Text Stack Breakdown' : '📦 Totes Under Station'}</div>
+                            <table class="inner-data-table">
+                                <thead>
+                                    <tr>
+                                        <th>${isManual ? 'Source' : 'Tote ID'}</th>
+                                        <th>Items & Quantities</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                item.containers.forEach(container => {
+                    let skuDetails = "";
+                    if (container.items && container.items.length > 0) {
+                        container.items.forEach(skuItem => {
+                            skuDetails += `<div class="sku-item">🔹 <strong>${skuItem.sku}</strong> (x${skuItem.qty})</div>`;
+                        });
+                    } else {
+                        skuDetails = `<div style="color: #333; font-weight: bold;">x${container.qty} total items</div>`;
+                    }
+
+                    let cellLabel = container.containerId;
+                    if (!isManual) {
+                        let fcResearchUrl = `https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}`;
+                        cellLabel = `<a href="${fcResearchUrl}" target="_blank" class="tote-link" title="Open directly in FC Research" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+                    } else {
+                        cellLabel = `📝 Multi-Tab Accumulation`;
+                    }
+
+                    innerHtmlMarkup += `
+                        <tr>
+                            <td style="font-family: monospace; font-weight:600;">${cellLabel}</td>
+                            <td>${skuDetails}</td>
+                        </tr>
+                    `;
+                });
+
+                innerHtmlMarkup += `</tbody></table></div></td>`;
+                nestedTr.innerHTML = innerHtmlMarkup;
+                tbody.appendChild(nestedTr);
+            }
         });
 
-        tbody.innerHTML += `
-            <tr class="total-row">
-                <td>GRAND TOTAL ITEMS</td>
-                <td>${totalSum}</td>
-            </tr>`;
-
-        document.getElementById("resultTable").style.display = "table";
+        let totalTr = document.createElement("tr");
+        totalTr.className = "total-row";
+        totalTr.innerHTML = `<td>GRAND TOTAL ITEMS</td><td>${totalSum}</td>`;
+        tbody.appendChild(totalTr);
     }
 
     function clearAll() {
+        accumulatedDataGlobal = {};
         currentSortedList = [];
+        expandedStations.clear();
         document.getElementById("inputBox").value = "";
         document.getElementById("tableBody").innerHTML = "";
         document.getElementById("resultTable").style.display = "none";
         document.getElementById("sortControls").style.display = "none";
     }
 </script>
-
-</body>
-</html>
