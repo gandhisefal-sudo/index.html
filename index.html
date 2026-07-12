@@ -209,7 +209,7 @@
 
 <div class="container">
     <h2>📊 Unified Station Quantity Accumulator</h2>
-    <p>Paste the copied lists from all your different portal tabs consecutively into the box below, then hit calculate.</p>
+    <p>Paste your data tab by tab. The calculator will remember previous entries and keep adding them together.</p>
     
     <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
     
@@ -249,7 +249,7 @@
             return;
         }
 
-        accumulatedDataGlobal = {}; 
+        // Global memory is preserved here to accumulate tab data consecutively
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
@@ -290,6 +290,9 @@
             sortData('name', 'asc');
             document.getElementById("sortControls").style.display = "block";
             document.getElementById("resultTable").style.display = "table";
+            
+            // Instantly empties the box so you can paste your next tab directly
+            document.getElementById("inputBox").value = ""; 
         } else {
             alert("No valid DZ-P or BUFFER data rows were identified. Check your selection.");
         }
