@@ -302,6 +302,12 @@
         return "A2000";
     }
 
+    function extractContainerQty(obj) {
+        if (!obj || typeof obj !== 'object') return 0;
+        let val = obj.qty ?? obj.quantity ?? obj.itemCount ?? obj.itemsCount ?? obj.count ?? obj.totalItems ?? obj.unitCount ?? obj.items_count;
+        return parseInt(val, 10) || 0;
+    }
+
     function calculateTotals() {
         let rawText = document.getElementById("inputBox").value;
         if (!rawText.trim()) {
@@ -311,7 +317,7 @@
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        let parsedSuccessfully = false;
+        let parsedJsonCount = 0;
 
         if (jsonBlocks.length > 0) {
             jsonBlocks.forEach(block => {
@@ -319,16 +325,15 @@
                     let parsedJson = JSON.parse(block);
                     let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
                     processJsonArray(normalizedArray, accumulatedDataGlobal);
-                    parsedSuccessfully = true;
+                    parsedJsonCount++;
                 } catch (e) {
                     console.error("JSON parse error", e);
                 }
             });
         }
 
-        if (!parsedSuccessfully) {
-            processTextFallback(sanitizedText, accumulatedDataGlobal);
-        }
+        // Always run text fallback to capture tabular HTML paste or mixed plain text
+        processTextFallback(sanitizedText, accumulatedDataGlobal);
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
@@ -381,62 +386,66 @@
 
     function processJsonArray(array, targetMap) {
         array.forEach(item => {
-            let station = item.station?.toUpperCase().trim();
+            let station = item.station?.toUpperCase().trim() || item.stationName?.toUpperCase().trim() || item.location?.toUpperCase().trim();
             if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
             
             if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
             
-            if (item.containers && Array.isArray(item.containers)) {
-                item.containers.forEach(newContainer => {
-                    let containerIdClean = newContainer.containerId?.trim();
+            let containerList = item.containers || item.totes || item.scannables || item.items;
+
+            if (containerList && Array.isArray(containerList)) {
+                containerList.forEach(newContainer => {
+                    let containerIdClean = (newContainer.containerId || newContainer.scannableId || newContainer.toteId || newContainer.id || "") .toString().trim();
                     if (!containerIdClean) return;
 
                     let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
                     
+                    let declaredQty = extractContainerQty(newContainer);
+                    let calculatedItemsQty = 0;
+                    let skuList = [];
+
+                    if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
+                        newContainer.items.forEach(it => {
+                            let itemQty = parseInt(it.qty ?? it.quantity ?? it.count ?? 1, 10) || 1;
+                            skuList.push({ sku: it.sku || it.fnsku || "UNKNOWN-SKU", qty: itemQty });
+                            calculatedItemsQty += itemQty;
+                        });
+                    }
+
+                    let finalToteQty = calculatedItemsQty > 0 ? calculatedItemsQty : declaredQty;
+
                     if (!existingContainer) {
-                        let containerCopy = {
+                        targetMap[station].containers.push({
                             containerId: containerIdClean,
-                            qty: 0,
-                            items: []
-                        };
-
-                        if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
-                            newContainer.items.forEach(it => {
-                                let itemQty = parseInt(it.qty, 10) || 0;
-                                containerCopy.items.push({ sku: it.sku, qty: itemQty });
-                                containerCopy.qty += itemQty;
-                            });
-                        } else {
-                            containerCopy.qty = parseInt(newContainer.qty, 10) || 0;
-                        }
-
-                        targetMap[station].containers.push(containerCopy);
+                            qty: finalToteQty,
+                            items: skuList
+                        });
                     } else {
-                        if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
-                            newContainer.items.forEach(newSkuItem => {
-                                let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                        if (skuList.length > 0) {
+                            skuList.forEach(newSkuItem => {
                                 let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
-                                
                                 if (existingSku) {
-                                    existingSku.qty += incomingSkuQty;
+                                    existingSku.qty += newSkuItem.qty;
                                 } else {
-                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: newSkuItem.qty });
                                 }
-                                existingContainer.qty += incomingSkuQty;
                             });
-                        } else {
-                            existingContainer.qty += parseInt(newContainer.qty, 10) || 0;
+                            existingContainer.qty = Math.max(existingContainer.qty, calculatedItemsQty);
+                        } else if (finalToteQty > existingContainer.qty) {
+                            existingContainer.qty = finalToteQty;
                         }
                     }
                 });
-            } else if (item.qty || item.quantity) {
-                let directQty = parseInt(item.qty || item.quantity, 10) || 0;
-                let fallbackToteId = "DIRECT-STATION-QTY";
-                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
-                if (!existingContainer) {
-                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: directQty, items: [] });
-                } else {
-                    existingContainer.qty += directQty;
+            } else {
+                let stationDirectQty = extractContainerQty(item);
+                if (stationDirectQty > 0) {
+                    let fallbackToteId = "DIRECT-STATION-QTY";
+                    let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
+                    if (!existingContainer) {
+                        targetMap[station].containers.push({ containerId: fallbackToteId, qty: stationDirectQty, items: [] });
+                    } else {
+                        existingContainer.qty += stationDirectQty;
+                    }
                 }
             }
         });
@@ -444,25 +453,40 @@
 
     function processTextFallback(rawText, targetMap) {
         let lines = rawText.split('\n');
-        lines.forEach(line => {
-            if (!line.trim()) return;
-            let parts = line.split(/\t+/);
-            if (parts.length < 2) parts = line.split(/\s{2,}/); 
-            
-            if (parts.length >= 2) {
-                let station = parts[0].trim().toUpperCase();
-                if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+        let activeStation = null;
 
-                let qty = parseInt(parts[1].trim(), 10) || 0;
-                if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
-                
-                let fallbackToteId = "MANUAL-PASTE-TOTAL";
-                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
-                
-                if (!existingContainer) {
-                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
-                } else {
-                    existingContainer.qty += qty;
+        lines.forEach(line => {
+            let cleanLine = line.trim();
+            if (!cleanLine) return;
+
+            let parts = cleanLine.split(/\t+/);
+            if (parts.length < 2) parts = cleanLine.split(/\s{2,}/);
+
+            let firstToken = parts[0].trim().toUpperCase();
+
+            if (firstToken.includes("DZ-P") || firstToken.includes("BUFFER")) {
+                activeStation = firstToken;
+                if (!targetMap[activeStation]) targetMap[activeStation] = { qty: 0, containers: [] };
+                return;
+            }
+
+            if (activeStation && parts.length >= 2) {
+                let scannableId = parts[0].trim();
+                let qtyVal = parseInt(parts[1].trim(), 10);
+
+                if (scannableId && !isNaN(qtyVal) && qtyVal > 0) {
+                    if (/^(Scannable|Tote|Items|SKU|Qty|Count)/i.test(scannableId)) return;
+
+                    let existingContainer = targetMap[activeStation].containers.find(c => c.containerId === scannableId);
+                    if (!existingContainer) {
+                        targetMap[activeStation].containers.push({
+                            containerId: scannableId,
+                            qty: qtyVal,
+                            items: []
+                        });
+                    } else if (existingContainer.qty === 0) {
+                        existingContainer.qty = qtyVal;
+                    }
                 }
             }
         });
@@ -516,13 +540,18 @@
                     <div class="nested-container-box">
                         <strong>📦 Totes Under ${item.station}:</strong>
                         <table class="inner-data-table">
-                            <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
+                            <thead><tr><th>Tote ID / Scannable</th><th>SKUs & Qty</th></tr></thead>
                             <tbody>
             `;
 
             item.containers.forEach(container => {
-                let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
-                let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+                let skuDetails = container.items.length > 0 
+                    ? container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') 
+                    : `x${container.qty} items`;
+
+                let cellLabel = isManual 
+                    ? '📝 Multi-Tab Accumulation' 
+                    : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
 
                 innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
             });
