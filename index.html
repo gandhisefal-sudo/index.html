@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Station Quantity Accumulator</title>
+    <title>3-Column Station Quantity Accumulator</title>
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,10 +14,10 @@
             color: #333;
         }
         .container {
-            max-width: 900px;
+            max-width: 1450px;
             margin: 0 auto;
             background: #ffffff;
-            padding: 30px;
+            padding: 25px;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
@@ -24,39 +26,25 @@
             margin-top: 0;
             border-bottom: 2px solid #e7e9ec;
             padding-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        p {
-            font-size: 0.95rem;
-            color: #555;
-            line-height: 1.5;
         }
         textarea {
             width: 100%;
-            height: 180px;
+            height: 130px;
             padding: 12px;
             border: 1px solid #a6a6a6;
             border-radius: 4px;
             font-family: monospace;
             font-size: 0.9rem;
-            resize: vertical;
             box-sizing: border-box;
             background-color: #fafafa;
         }
-        textarea:focus {
-            border-color: #0066c0;
-            outline: none;
-            background-color: #fff;
-        }
         .btn-group {
-            margin-top: 15px;
+            margin-top: 12px;
             display: flex;
             gap: 10px;
         }
         button {
-            padding: 10px 20px;
+            padding: 10px 18px;
             font-size: 0.9rem;
             font-weight: bold;
             border: none;
@@ -64,177 +52,230 @@
             cursor: pointer;
             transition: background 0.2s;
         }
-        .btn-process {
-            background-color: #2cba00;
-            color: white;
-        }
-        .btn-process:hover {
-            background-color: #249700;
-        }
-        .btn-clear {
-            background-color: #a6a6a6;
-            color: white;
-        }
-        .btn-clear:hover {
-            background-color: #8c8c8c;
-        }
+        .btn-process { background-color: #2cba00; color: white; }
+        .btn-process:hover { background-color: #249700; }
+        .btn-excel { background-color: #107c41; color: white; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-clear { background-color: #a6a6a6; color: white; }
+        .btn-clear:hover { background-color: #8c8c8c; }
         .sort-section {
-            margin-top: 25px;
+            margin-top: 18px;
             background: #f7f9fa;
-            padding: 12px;
+            padding: 10px 15px;
             border-radius: 4px;
             border: 1px solid #e7e9ec;
             display: none;
         }
-        .sort-label {
-            font-weight: bold;
-            font-size: 0.9rem;
-            margin-right: 10px;
-        }
         .sort-btn {
             background: #fff;
             border: 1px solid #a6a6a6;
-            padding: 5px 12px;
+            padding: 4px 10px;
             font-size: 0.85rem;
             color: #333;
             border-radius: 4px;
             margin-right: 5px;
+            cursor: pointer;
         }
-        .sort-btn:hover {
-            background: #f0f2f2;
-            border-color: #848484;
+        .sort-btn:hover { background: #eef2f5; }
+
+        /* 3-Column Level Grid Layout */
+        .floors-container {
+            display: flex;
+            gap: 18px;
+            margin-top: 20px;
+            align-items: flex-start;
         }
+        .floor-column {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #dcdfe4;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+        .floor-header {
+            background-color: #0066c0;
+            color: #ffffff;
+            padding: 12px 15px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .floor-subtext {
+            font-size: 0.75rem;
+            font-weight: normal;
+            opacity: 0.85;
+            display: block;
+        }
+        .floor-total-badge {
+            background: rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            display: none;
             background: #fff;
         }
         th, td {
-            padding: 12px 15px;
+            padding: 10px 12px;
             text-align: left;
             border-bottom: 1px solid #e7e9ec;
+            font-size: 0.88rem;
         }
         th {
             background-color: #f7f9fa;
             color: #555;
             font-weight: 600;
+            font-size: 0.78rem;
             text-transform: uppercase;
-            font-size: 0.8rem;
-            letter-spacing: 0.5px;
         }
-        .station-row-interactive {
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .station-row-interactive:hover {
-            background-color: #f5f9fc;
-        }
-        .toggle-indicator {
-            display: inline-block;
-            width: 15px;
-            color: #888;
-            font-size: 0.75rem;
-        }
+        .station-row-interactive { cursor: pointer; }
+        .station-row-interactive:hover { background-color: #f0f7fc; }
         .badge {
             background-color: #e1f0fc;
             color: #0066c0;
             padding: 2px 6px;
-            border-radius: 3px;
+            border-radius: 4px;
             font-size: 0.75rem;
             font-weight: bold;
-            margin-left: 8px;
+            margin-left: 4px;
         }
-        .nested-row {
-            background-color: #fcfdfe;
-        }
+        .nested-row { background-color: #fcfdfe; }
         .nested-container-box {
-            padding: 15px;
-            border-left: 4px solid #0066c0;
+            padding: 10px;
+            border-left: 3px solid #0066c0;
             background: #f7fafd;
-            margin: 5px 0;
-            border-radius: 0 4px 4px 0;
-        }
-        .nested-title {
-            font-weight: bold;
-            font-size: 0.9rem;
-            color: #0066c0;
-            margin-bottom: 10px;
+            margin: 4px 0;
+            font-size: 0.8rem;
         }
         .inner-data-table {
-            display: table !important;
             width: 100%;
-            margin-top: 0;
-            box-shadow: none;
+            margin-top: 5px;
             background: transparent;
         }
-        .inner-data-table th {
-            background: #edf4fa;
-            color: #444;
-            font-size: 0.75rem;
+        .inner-data-table th { background: #edf4fa; padding: 6px; }
+        .inner-data-table td { padding: 6px; background: #fff; }
+        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
+        .tote-link:hover { text-decoration: underline; }
+        .no-data-msg {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
         }
-        .inner-data-table td {
-            padding: 8px 12px;
-            font-size: 0.85rem;
-            background: #fff;
-        }
-        .sku-item {
-            padding: 3px 0;
-            border-bottom: 1px dashed #e7e9ec;
-        }
-        .sku-item:last-child {
-            border-bottom: none;
-        }
-        .tote-link {
-            color: #0066c0;
-            text-decoration: none;
+        .grand-summary-bar {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 6px;
+            display: none;
+            justify-content: space-between;
+            font-size: 1.1rem;
             font-weight: bold;
-        }
-        .tote-link:hover {
-            text-decoration: underline;
-        }
-        .total-row {
-            background-color: #e7e9ec;
-            font-weight: bold;
-            font-size: 1.05rem;
-        }
-        .total-row td {
-            border-top: 2px solid #ccc;
-            color: #111;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 Unified Station Quantity Accumulator</h2>
-    <p>Paste your data tab by tab. The calculator will remember previous entries and keep adding them together.</p>
+    <h2>📊 Unified 3-Column Accumulator</h2>
+    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns (includes both A & B fields).</p>
     
     <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
+        <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
         <button class="btn-clear" onclick="clearAll()">Reset</button>
     </div>
 
     <div id="sortControls" class="sort-section">
-        <span class="sort-label">Sort Output Table:</span>
+        <strong>Sort Tables:</strong>
         <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
         <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
         <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
         <button class="sort-btn" onclick="sortData('qty', 'asc')">Quantity (Low-High)</button>
     </div>
 
-    <table id="resultTable">
-        <thead>
-            <tr>
-                <th>Station Name (Click to expand totes)</th>
-                <th>Aggregated Unit Count</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+    <div class="floors-container">
+        <!-- DZ-P-A2000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A2000
+                    <span class="floor-subtext">Includes A2 & B2 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A2000">
+                    <tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- DZ-P-A3000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A3000
+                    <span class="floor-subtext">Includes A3 & B3 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A3000">
+                    <tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- DZ-P-A4000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A4000
+                    <span class="floor-subtext">Includes A4 & B4 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A4000">
+                    <tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="grandSummary" class="grand-summary-bar">
+        <span>GRAND TOTAL ALL COLUMNS:</span>
+        <span id="grandTotalUnits">0 Units</span>
+    </div>
 </div>
 
 <script>
@@ -242,14 +283,20 @@
     let currentSortedList = [];
     let expandedStations = new Set();
 
+    // Categorizes station into A2000, A3000, or A4000 (handles both A & B prefixes)
+    function getFloorGroup(stationName) {
+        if (/A2|B2/i.test(stationName)) return "A2000";
+        if (/A3|B3/i.test(stationName)) return "A3000";
+        if (/A4|B4/i.test(stationName)) return "A4000";
+        return "A2000"; // Fallback default
+    }
+
     function calculateTotals() {
         let rawText = document.getElementById("inputBox").value;
         if (!rawText.trim()) {
             alert("Please paste data into the box first!");
             return;
         }
-
-        // Global memory is preserved here to accumulate tab data consecutively
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
@@ -263,7 +310,7 @@
                     processJsonArray(normalizedArray, accumulatedDataGlobal);
                     parsedSuccessfully = true;
                 } catch (e) {
-                    console.error("Failed parsing JSON block:", e);
+                    console.error("JSON parse error", e);
                 }
             });
         }
@@ -275,12 +322,12 @@
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             let finalStationQty = 0;
-            itemData.containers.forEach(c => {
-                finalStationQty += c.qty;
-            });
+            itemData.containers.forEach(c => { finalStationQty += c.qty; });
 
             return { 
                 station: key, 
+                group: getFloorGroup(key),
+                toteCount: itemData.containers.length,
                 qty: finalStationQty, 
                 containers: itemData.containers 
             };
@@ -289,28 +336,20 @@
         if (currentSortedList.length > 0) {
             sortData('name', 'asc');
             document.getElementById("sortControls").style.display = "block";
-            document.getElementById("resultTable").style.display = "table";
-            
-            // Instantly empties the box so you can paste your next tab directly
+            document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid DZ-P or BUFFER data rows were identified. Check your selection.");
+            alert("No valid DZ-P or BUFFER data rows were identified.");
         }
     }
 
     function extractTopLevelJSONBlocks(text) {
         let blocks = [];
-        let bracketCount = 0;
-        let braceCount = 0;
-        let startIdx = -1;
-        let inString = false;
+        let bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
 
         for (let i = 0; i < text.length; i++) {
             let char = text[i];
-            if (char === '"' && text[i - 1] !== '\\') {
-                inString = !inString;
-                continue;
-            }
+            if (char === '"' && text[i - 1] !== '\\') { inString = !inString; continue; }
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
@@ -334,9 +373,7 @@
             let station = item.station?.toUpperCase().trim();
             if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
             
-            if (!targetMap[station]) {
-                targetMap[station] = { qty: 0, containers: [] };
-            }
+            if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
             
             if (item.containers && Array.isArray(item.containers)) {
                 item.containers.forEach(newContainer => {
@@ -357,23 +394,15 @@
                             });
                         }
                         targetMap[station].containers.push(containerCopy);
-                    } else {
-                        if (newContainer.items && Array.isArray(newContainer.items)) {
-                            newContainer.items.forEach(newSkuItem => {
-                                let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
-                                let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
-                                
-                                if (!existingSku) {
-                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
-                                    existingContainer.qty += incomingSkuQty;
-                                } else {
-                                    if (existingSku.qty !== incomingSkuQty) {
-                                        existingSku.qty += incomingSkuQty;
-                                        existingContainer.qty += incomingSkuQty;
-                                    }
-                                }
-                            });
-                        }
+                    } else if (newContainer.items && Array.isArray(newContainer.items)) {
+                        newContainer.items.forEach(newSkuItem => {
+                            let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
+                            let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                            if (!existingSku) {
+                                existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                existingContainer.qty += incomingSkuQty;
+                            }
+                        });
                     }
                 });
             }
@@ -392,30 +421,23 @@
                 if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
 
                 let qty = parseInt(parts[1].trim(), 10) || 0;
-                if (!targetMap[station]) {
-                    targetMap[station] = { qty: 0, containers: [] };
-                }
+                if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
                 
                 let fallbackToteId = "MANUAL-PASTE-TOTAL";
                 let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
                 
                 if (!existingContainer) {
                     targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
-                } else {
-                    if (existingContainer.qty !== qty) {
-                        existingContainer.qty += qty;
-                    }
+                } else if (existingContainer.qty !== qty) {
+                    existingContainer.qty += qty;
                 }
             }
         });
     }
 
     function toggleStation(stationName) {
-        if (expandedStations.has(stationName)) {
-            expandedStations.delete(stationName);
-        } else {
-            expandedStations.add(stationName);
-        }
+        if (expandedStations.has(stationName)) expandedStations.delete(stationName);
+        else expandedStations.add(stationName);
         renderTable();
     }
 
@@ -430,88 +452,102 @@
     }
 
     function renderTable() {
-        let tbody = document.getElementById("tableBody");
-        tbody.innerHTML = "";
-        let totalSum = 0;
+        let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
+        let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
+        let grandTotal = 0;
 
         currentSortedList.forEach(item => {
-            totalSum += item.qty;
-            let hasExtraData = item.containers && item.containers.length > 0;
-            let isExpanded = expandedStations.has(item.station);
-            
-            let tr = document.createElement("tr");
-            if (hasExtraData) {
-                tr.className = "station-row-interactive";
-                tr.onclick = () => toggleStation(item.station);
-            }
-            
-            tr.innerHTML = `
-                <td style="font-family: monospace; font-weight: bold;">
-                    ${hasExtraData ? `<span class="toggle-indicator">${isExpanded ? '▼' : '▶'}</span>` : ''}
-                    ${item.station}
-                </td>
-                <td style="color: #0066c0; font-weight: bold;">
-                    ${item.qty}
-                    ${hasExtraData && item.containers[0].containerId !== "MANUAL-PASTE-TOTAL" ? `<span class="badge">${item.containers.length} Totes</span>` : ''}
-                </td>
-            `;
-            tbody.appendChild(tr);
-
-            if (hasExtraData && isExpanded) {
-                let nestedTr = document.createElement("tr");
-                nestedTr.className = "nested-row";
-                let isManual = item.containers[0].containerId === "MANUAL-PASTE-TOTAL";
-                
-                let innerHtmlMarkup = `
-                    <td colspan="2">
-                        <div class="nested-container-box">
-                            <div class="nested-title">${isManual ? '📋 Plain Text Stack Breakdown' : '📦 Totes Under Station'}</div>
-                            <table class="inner-data-table">
-                                <thead>
-                                    <tr>
-                                        <th>${isManual ? 'Source' : 'Tote ID'}</th>
-                                        <th>Items & Quantities</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                `;
-
-                item.containers.forEach(container => {
-                    let skuDetails = "";
-                    if (container.items && container.items.length > 0) {
-                        container.items.forEach(skuItem => {
-                            skuDetails += `<div class="sku-item">🔹 <strong>${skuItem.sku}</strong> (x${skuItem.qty})</div>`;
-                        });
-                    } else {
-                        skuDetails = `<div style="color: #333; font-weight: bold;">x${container.qty} total items</div>`;
-                    }
-
-                    let cellLabel = container.containerId;
-                    if (!isManual) {
-                        let fcResearchUrl = `https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}`;
-                        cellLabel = `<a href="${fcResearchUrl}" target="_blank" class="tote-link" title="Open directly in FC Research" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
-                    } else {
-                        cellLabel = `📝 Multi-Tab Accumulation`;
-                    }
-
-                    innerHtmlMarkup += `
-                        <tr>
-                            <td style="font-family: monospace; font-weight:600;">${cellLabel}</td>
-                            <td>${skuDetails}</td>
-                        </tr>
-                    `;
-                });
-
-                innerHtmlMarkup += `</tbody></table></div></td>`;
-                nestedTr.innerHTML = innerHtmlMarkup;
-                tbody.appendChild(nestedTr);
-            }
+            let g = item.group;
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(item);
+            groupTotals[g] += item.qty;
+            grandTotal += item.qty;
         });
 
-        let totalTr = document.createElement("tr");
-        totalTr.className = "total-row";
-        totalTr.innerHTML = `<td>GRAND TOTAL ITEMS</td><td>${totalSum}</td>`;
-        tbody.appendChild(totalTr);
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            let tbody = document.getElementById(`body-${g}`);
+            document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
+            tbody.innerHTML = "";
+
+            if (groups[g].length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+                return;
+            }
+
+            groups[g].forEach(item => {
+                let hasExtraData = item.containers && item.containers.length > 0;
+                let isExpanded = expandedStations.has(item.station);
+                let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+
+                let tr = document.createElement("tr");
+                if (hasExtraData) {
+                    tr.className = "station-row-interactive";
+                    tr.onclick = () => toggleStation(item.station);
+                }
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-weight: bold;">
+                        ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                        ${item.station}
+                    </td>
+                    <td style="color: #0066c0; font-weight: bold; text-align: right;">
+                        ${item.qty}
+                        ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                if (hasExtraData && isExpanded) {
+                    let nestedTr = document.createElement("tr");
+                    nestedTr.className = "nested-row";
+
+                    let innerHtmlMarkup = `
+                        <td colspan="2">
+                            <div class="nested-container-box">
+                                <strong>📦 Totes Under ${item.station}:</strong>
+                                <table class="inner-data-table">
+                                    <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    item.containers.forEach(container => {
+                        let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
+                        let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+
+                        innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails}</td></tr>`;
+                    });
+
+                    innerHtmlMarkup += `</tbody></table></div></td>`;
+                    nestedTr.innerHTML = innerHtmlMarkup;
+                    tbody.appendChild(nestedTr);
+                }
+            });
+        });
+
+        document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
+    }
+
+    function exportToExcel() {
+        if (currentSortedList.length === 0) {
+            alert("Please process some data first before exporting!");
+            return;
+        }
+
+        let excelData = [];
+        currentSortedList.forEach(item => {
+            excelData.push({
+                "Group": item.group,
+                "Station Name": item.station,
+                "Totes / Containers": item.toteCount,
+                "Aggregated Unit Count": item.qty
+            });
+        });
+
+        let worksheet = XLSX.utils.json_to_sheet(excelData);
+        let workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
+
+        XLSX.writeFile(workbook, "DZ-P_3Column_Accumulation.xlsx");
     }
 
     function clearAll() {
@@ -519,9 +555,12 @@
         currentSortedList = [];
         expandedStations.clear();
         document.getElementById("inputBox").value = "";
-        document.getElementById("tableBody").innerHTML = "";
-        document.getElementById("resultTable").style.display = "none";
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+            document.getElementById(`badge-${g}`).innerText = "0 Units";
+        });
         document.getElementById("sortControls").style.display = "none";
+        document.getElementById("grandSummary").style.display = "none";
     }
 </script>
 
