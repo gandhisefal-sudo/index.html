@@ -14,7 +14,8 @@
         button { padding: 10px 18px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
         .btn-process { background-color: #2cba00; color: white; }
         .btn-excel { background-color: #107c41; color: white; }
-        .btn-clear { background-color: #a6a6a6; color: white; }
+        .btn-clear { background-color: #d9534f; color: white; }
+        .accum-status { margin-top: 10px; padding: 8px 12px; background: #eaf2fb; border-left: 4px solid #0066c0; color: #004085; font-weight: bold; font-size: 0.85rem; display: none; }
         .sort-section { margin-top: 18px; background: #f7f9fa; padding: 10px 15px; border-radius: 4px; border: 1px solid #e7e9ec; display: none; }
         .sort-btn { background: #fff; border: 1px solid #a6a6a6; padding: 4px 10px; font-size: 0.85rem; border-radius: 4px; margin-right: 5px; cursor: pointer; }
         .floors-container { display: flex; gap: 18px; margin-top: 20px; align-items: flex-start; }
@@ -43,14 +44,18 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks below. Multi-column web table copies are automatically cleaned.</p>
+    <p>Paste data from multiple links sequentially. Totals accumulate automatically until you click "Reset All Data".</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
     <div class="btn-group">
-        <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
+        <button class="btn-process" onclick="calculateTotals()">➕ Accumulate Data</button>
         <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
-        <button class="btn-clear" onclick="clearAll()">Reset All Data</button>
+        <button class="btn-clear" onclick="clearAll()">🗑️ Reset All Data</button>
+    </div>
+
+    <div id="accumStatus" class="accum-status">
+        🔄 Multi-link Accumulation Active: Data from multiple pastes is currently merged. Click "Reset All Data" to clear memory.
     </div>
 
     <div id="sortControls" class="sort-section">
@@ -114,8 +119,6 @@
             return;
         }
 
-        accumulatedDataGlobal = {}; // Clear state on new processing run
-
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         
         processTextDirect(sanitizedText, accumulatedDataGlobal);
@@ -151,6 +154,7 @@
             sortData('name', 'asc');
             document.getElementById("sortControls").style.display = "block";
             document.getElementById("grandSummary").style.display = "flex";
+            document.getElementById("accumStatus").style.display = "block";
             document.getElementById("inputBox").value = ""; 
         } else {
             alert("No valid DZ-P stations with quantities > 0 were found.");
@@ -236,7 +240,7 @@
                     if (!existing) {
                         targetMap[activeStation].containers.push({ containerId: parsedTote.id, qty: parsedTote.qty });
                     } else {
-                        existing.qty = Math.max(existing.qty, parsedTote.qty);
+                        existing.qty += parsedTote.qty;
                     }
                 }
             }
@@ -285,7 +289,7 @@
                     if (id && q > 0 && !isInvalidKey(id) && /^[a-zA-Z0-9_\-]+$/.test(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty = Math.max(existing.qty, q);
+                        else existing.qty += q;
                     }
                 });
             }
@@ -422,6 +426,7 @@
         });
         document.getElementById("sortControls").style.display = "none";
         document.getElementById("grandSummary").style.display = "none";
+        document.getElementById("accumStatus").style.display = "none";
     }
 </script>
 </body>
