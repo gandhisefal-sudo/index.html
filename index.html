@@ -43,7 +43,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks below. Multi-paste dynamic accumulation enabled.</p>
+    <p>Paste station data or JSON blocks below. Strict barcode filtering enabled.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -103,6 +103,10 @@
         return "A2000";
     }
 
+    function isInvalidKey(idStr) {
+        return /^(totalQty|qty|quantity|count|totalItems|itemCount|station|stationName|containers|totes|scannables|items|sku|status|location|scannable|tote|id|name)$/i.test(idStr);
+    }
+
     function calculateTotals() {
         let rawText = document.getElementById("inputBox").value;
         if (!rawText.trim()) {
@@ -125,8 +129,8 @@
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             
-            // Filter out 0 Qty containers
-            itemData.containers = itemData.containers.filter(c => c.qty > 0);
+            // Filter out invalid keys and 0-qty containers
+            itemData.containers = itemData.containers.filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
 
             let sumTotes = 0;
             itemData.containers.forEach(c => { sumTotes += c.qty; });
@@ -181,16 +185,17 @@
             if (activeStation) {
                 let parts = clean.split(/\s+/).filter(p => p.length > 0);
                 if (parts.length >= 1) {
-                    let scannableId = parts[0].trim();
-                    
-                    if (/^(Scannable|Tote|Items|SKU|Qty|Count|Station|Status|Location)/i.test(scannableId)) continue;
+                    let rawId = parts[0].trim();
+                    // Strip quotes, colons, commas, braces
+                    let scannableId = rawId.replace(/["':,{} [\]]/g, '').trim();
 
-                    let numbers = parts.slice(1).map(p => parseInt(p, 10)).filter(n => !isNaN(n));
+                    if (!scannableId || isInvalidKey(scannableId) || !/^[a-zA-Z0-9_\-]+$/.test(scannableId)) continue;
+
+                    let numbers = parts.slice(1).map(p => parseInt(p.replace(/[,;]/g, ''), 10)).filter(n => !isNaN(n));
                     let qtyVal = numbers.length > 0 ? numbers[numbers.length - 1] : NaN;
 
-                    // Support vertical single-line table copies
                     if (isNaN(qtyVal) && i + 1 < lines.length) {
-                        let nextLine = lines[i + 1].trim();
+                        let nextLine = lines[i + 1].trim().replace(/[,;]/g, '');
                         if (/^\d+$/.test(nextLine)) {
                             qtyVal = parseInt(nextLine, 10);
                             i++;
@@ -218,7 +223,7 @@
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '[' ) bracketCount++;
+                    if (char === '[') bracketCount++;
                     if (char === '{') braceCount++;
                 } else if (char === ']' || char === '}') {
                     if (char === ']') bracketCount--;
@@ -245,10 +250,11 @@
             let containerList = item.containers || item.totes || item.scannables;
             if (Array.isArray(containerList)) {
                 containerList.forEach(c => {
-                    let id = (c.containerId || c.scannableId || c.toteId || c.id || "").toString().trim();
+                    let rawId = (c.containerId || c.scannableId || c.toteId || c.id || "").toString();
+                    let id = rawId.replace(/["':,{} [\]]/g, '').trim();
                     let q = parseInt(c.qty || c.quantity || c.itemCount || c.count || c.totalItems || 0, 10);
                     
-                    if (id && q > 0) {
+                    if (id && q > 0 && !isInvalidKey(id) && /^[a-zA-Z0-9_\-]+$/.test(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
                         else existing.qty = Math.max(existing.qty, q);
@@ -275,7 +281,7 @@
     }
 
     function renderStationRow(tbody, item) {
-        let activeContainers = (item.containers || []).filter(c => c.qty > 0);
+        let activeContainers = (item.containers || []).filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
         let hasContainers = activeContainers.length > 0;
         let isExpanded = expandedStations.has(item.station);
 
@@ -368,7 +374,7 @@
             "Group": i.group,
             "Field": /DZ-P-B/i.test(i.station) ? "B-Field" : "A-Field",
             "Station Name": i.station,
-            "Tote Count": (i.containers || []).filter(c => c.qty > 0).length,
+            "Tote Count": (i.containers || []).filter(c => c.qty > 0 && !isInvalidKey(c.containerId)).length,
             "Total Quantity": i.qty
         }));
         let ws = XLSX.utils.json_to_sheet(data);
