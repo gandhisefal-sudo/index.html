@@ -43,7 +43,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks below. Accumulates quantities dynamically across links for identical stations.</p>
+    <p>Paste station data or JSON blocks below. Multi-paste dynamic accumulation enabled.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -112,7 +112,6 @@
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         
-        // Process text and JSON without resetting global memory to allow tab-by-tab accumulation
         processTextDirect(sanitizedText, accumulatedDataGlobal);
 
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
@@ -123,11 +122,10 @@
             } catch (e) {}
         });
 
-        // Filter and compile current state
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             
-            // STRICT FILTER: Remove 0 qty totes completely
+            // Filter out 0 Qty containers
             itemData.containers = itemData.containers.filter(c => c.qty > 0);
 
             let sumTotes = 0;
@@ -142,7 +140,7 @@
                 qty: finalQty, 
                 containers: itemData.containers 
             };
-        }).filter(item => item.qty > 0); // Exclude stations with 0 total units
+        }).filter(item => item.qty > 0);
 
         if (currentSortedList.length > 0) {
             sortData('name', 'asc');
@@ -150,7 +148,7 @@
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid DZ-P or BUFFER stations with quantity > 0 were found.");
+            alert("No valid DZ-P stations with quantities > 0 were found.");
         }
     }
 
@@ -158,43 +156,58 @@
         let lines = rawText.split('\n');
         let activeStation = null;
 
-        lines.forEach(line => {
-            let clean = line.trim();
-            if (!clean) return;
+        for (let i = 0; i < lines.length; i++) {
+            let clean = lines[i].replace(/\u00A0/g, ' ').trim();
+            if (!clean) continue;
 
-            let matchStation = clean.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)(?:\s+(\d+))?/i);
+            let matchStation = clean.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
             if (matchStation && (clean.toUpperCase().includes("DZ-P") || clean.toUpperCase().includes("BUFFER"))) {
                 activeStation = matchStation[1].toUpperCase().trim();
-                let headerVal = matchStation[2] ? parseInt(matchStation[2], 10) : 0;
+                
+                let numbersOnLine = clean.match(/\b\d+\b/g);
+                let headerVal = 0;
+                if (numbersOnLine && numbersOnLine.length > 0) {
+                    headerVal = parseInt(numbersOnLine[numbersOnLine.length - 1], 10);
+                }
 
                 if (!targetMap[activeStation]) {
                     targetMap[activeStation] = { headerQty: headerVal, containers: [] };
                 } else if (headerVal > targetMap[activeStation].headerQty) {
                     targetMap[activeStation].headerQty = headerVal;
                 }
-                return;
+                continue;
             }
 
             if (activeStation) {
-                let parts = clean.split(/\s+/);
-                if (parts.length >= 2) {
+                let parts = clean.split(/\s+/).filter(p => p.length > 0);
+                if (parts.length >= 1) {
                     let scannableId = parts[0].trim();
-                    let qtyVal = parseInt(parts[1].trim(), 10);
+                    
+                    if (/^(Scannable|Tote|Items|SKU|Qty|Count|Station|Status|Location)/i.test(scannableId)) continue;
 
-                    // Ignore 0 qty totes
+                    let numbers = parts.slice(1).map(p => parseInt(p, 10)).filter(n => !isNaN(n));
+                    let qtyVal = numbers.length > 0 ? numbers[numbers.length - 1] : NaN;
+
+                    // Support vertical single-line table copies
+                    if (isNaN(qtyVal) && i + 1 < lines.length) {
+                        let nextLine = lines[i + 1].trim();
+                        if (/^\d+$/.test(nextLine)) {
+                            qtyVal = parseInt(nextLine, 10);
+                            i++;
+                        }
+                    }
+
                     if (scannableId && !isNaN(qtyVal) && qtyVal > 0) {
-                        if (/^(Scannable|Tote|Items|SKU|Qty|Count)/i.test(scannableId)) return;
-
-                        let existing = targetMap[activeStation].containers.find(c => c.containerId === scannableId);
+                        let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === scannableId.toLowerCase());
                         if (!existing) {
-                            targetMap[activeStation].containers.push({ containerId: scannableId, qty: qtyVal, items: [] });
+                            targetMap[activeStation].containers.push({ containerId: scannableId, qty: qtyVal });
                         } else {
                             existing.qty = Math.max(existing.qty, qtyVal);
                         }
                     }
                 }
             }
-        });
+        }
     }
 
     function extractTopLevelJSONBlocks(text) {
@@ -205,7 +218,7 @@
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '[') bracketCount++;
+                    if (char === '[' ) bracketCount++;
                     if (char === '{') braceCount++;
                 } else if (char === ']' || char === '}') {
                     if (char === ']') bracketCount--;
@@ -235,10 +248,9 @@
                     let id = (c.containerId || c.scannableId || c.toteId || c.id || "").toString().trim();
                     let q = parseInt(c.qty || c.quantity || c.itemCount || c.count || c.totalItems || 0, 10);
                     
-                    // Exclude 0 qty
                     if (id && q > 0) {
-                        let existing = targetMap[station].containers.find(x => x.containerId === id);
-                        if (!existing) targetMap[station].containers.push({ containerId: id, qty: q, items: [] });
+                        let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
+                        if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
                         else existing.qty = Math.max(existing.qty, q);
                     }
                 });
