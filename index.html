@@ -404,24 +404,40 @@
                             newContainer.items.forEach(it => {
                                 let itemQty = parseInt(it.qty, 10) || 0;
                                 containerCopy.items.push({ sku: it.sku, qty: itemQty });
-                                containerCopy.qty += itemQty; // Correctly sums item quantities into tote total
+                                containerCopy.qty += itemQty;
                             });
                         } else {
                             containerCopy.qty = parseInt(newContainer.qty, 10) || 0;
                         }
 
                         targetMap[station].containers.push(containerCopy);
-                    } else if (newContainer.items && Array.isArray(newContainer.items)) {
-                        newContainer.items.forEach(newSkuItem => {
-                            let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
-                            let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
-                            if (!existingSku) {
-                                existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                    } else {
+                        if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
+                            newContainer.items.forEach(newSkuItem => {
+                                let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                                let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
+                                
+                                if (existingSku) {
+                                    existingSku.qty += incomingSkuQty;
+                                } else {
+                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                }
                                 existingContainer.qty += incomingSkuQty;
-                            }
-                        });
+                            });
+                        } else {
+                            existingContainer.qty += parseInt(newContainer.qty, 10) || 0;
+                        }
                     }
                 });
+            } else if (item.qty || item.quantity) {
+                let directQty = parseInt(item.qty || item.quantity, 10) || 0;
+                let fallbackToteId = "DIRECT-STATION-QTY";
+                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
+                if (!existingContainer) {
+                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: directQty, items: [] });
+                } else {
+                    existingContainer.qty += directQty;
+                }
             }
         });
     }
@@ -445,7 +461,7 @@
                 
                 if (!existingContainer) {
                     targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
-                } else if (existingContainer.qty !== qty) {
+                } else {
                     existingContainer.qty += qty;
                 }
             }
