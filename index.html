@@ -78,7 +78,6 @@
         }
         .sort-btn:hover { background: #eef2f5; }
 
-        /* 3-Column Level Grid Layout */
         .floors-container {
             display: flex;
             gap: 18px;
@@ -136,7 +135,6 @@
             text-transform: uppercase;
         }
         
-        /* Section Sub-Header Rows for A/B Separation */
         .field-subheader {
             background-color: #eaf2fb;
             color: #004085;
@@ -198,14 +196,14 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns with clear visual separation between A and B fields.</p>
+    <p>Paste station data or JSON blocks. Stations auto-sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns.</p>
     
     <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
         <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
-        <button class="btn-clear" onclick="clearAll()">Reset</button>
+        <button class="btn-clear" onclick="clearAll()">Reset All Data</button>
     </div>
 
     <div id="sortControls" class="sort-section">
@@ -302,10 +300,28 @@
         return "A2000";
     }
 
-    function extractContainerQty(obj) {
-        if (!obj || typeof obj !== 'object') return 0;
-        let val = obj.qty ?? obj.quantity ?? obj.itemCount ?? obj.itemsCount ?? obj.count ?? obj.totalItems ?? obj.unitCount ?? obj.items_count;
-        return parseInt(val, 10) || 0;
+    // Deep search to extract unit counts across any unknown JSON keys
+    function extractQuantityDeep(obj) {
+        if (obj === null || obj === undefined) return 0;
+        if (typeof obj === 'number') return obj;
+        if (typeof obj === 'string' && !isNaN(obj) && obj.trim() !== '') return parseInt(obj, 10);
+
+        if (typeof obj === 'object') {
+            const knownKeys = ['items', 'qty', 'quantity', 'itemCount', 'itemsCount', 'count', 'totalItems', 'unitCount', 'items_count', 'totalQuantity', 'expectedCount', 'numItems', 'size'];
+            for (let k of knownKeys) {
+                if (obj[k] !== undefined && typeof obj[k] !== 'object') {
+                    let parsed = parseInt(obj[k], 10);
+                    if (!isNaN(parsed) && parsed > 0) return parsed;
+                }
+            }
+            for (let key in obj) {
+                if (typeof obj[key] === 'object' && obj[key] !== null) {
+                    let res = extractQuantityDeep(obj[key]);
+                    if (res > 0) return res;
+                }
+            }
+        }
+        return 0;
     }
 
     function calculateTotals() {
@@ -317,7 +333,6 @@
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        let parsedJsonCount = 0;
 
         if (jsonBlocks.length > 0) {
             jsonBlocks.forEach(block => {
@@ -325,14 +340,13 @@
                     let parsedJson = JSON.parse(block);
                     let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
                     processJsonArray(normalizedArray, accumulatedDataGlobal);
-                    parsedJsonCount++;
                 } catch (e) {
                     console.error("JSON parse error", e);
                 }
             });
         }
 
-        // Always run text fallback to capture tabular HTML paste or mixed plain text
+        // Always run text fallback to catch raw tab-separated tables
         processTextFallback(sanitizedText, accumulatedDataGlobal);
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
@@ -386,28 +400,29 @@
 
     function processJsonArray(array, targetMap) {
         array.forEach(item => {
-            let station = item.station?.toUpperCase().trim() || item.stationName?.toUpperCase().trim() || item.location?.toUpperCase().trim();
+            let station = (item.station || item.stationName || item.location || item.workstation || item.name || "").toString().toUpperCase().trim();
             if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
             
             if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
             
-            let containerList = item.containers || item.totes || item.scannables || item.items;
+            let containerList = item.containers || item.totes || item.scannables || item.childContainers || item.inventory;
 
             if (containerList && Array.isArray(containerList)) {
                 containerList.forEach(newContainer => {
-                    let containerIdClean = (newContainer.containerId || newContainer.scannableId || newContainer.toteId || newContainer.id || "") .toString().trim();
+                    let containerIdClean = (newContainer.containerId || newContainer.scannableId || newContainer.toteId || newContainer.id || newContainer.barcode || "").toString().trim();
                     if (!containerIdClean) return;
 
                     let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
                     
-                    let declaredQty = extractContainerQty(newContainer);
+                    let declaredQty = extractQuantityDeep(newContainer);
                     let calculatedItemsQty = 0;
                     let skuList = [];
 
-                    if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
-                        newContainer.items.forEach(it => {
-                            let itemQty = parseInt(it.qty ?? it.quantity ?? it.count ?? 1, 10) || 1;
-                            skuList.push({ sku: it.sku || it.fnsku || "UNKNOWN-SKU", qty: itemQty });
+                    let innerItems = newContainer.items || newContainer.skus || newContainer.contents;
+                    if (innerItems && Array.isArray(innerItems) && innerItems.length > 0) {
+                        innerItems.forEach(it => {
+                            let itemQty = extractQuantityDeep(it) || 1;
+                            skuList.push({ sku: it.sku || it.fnsku || it.asin || "SKU-ITEM", qty: itemQty });
                             calculatedItemsQty += itemQty;
                         });
                     }
@@ -424,11 +439,8 @@
                         if (skuList.length > 0) {
                             skuList.forEach(newSkuItem => {
                                 let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
-                                if (existingSku) {
-                                    existingSku.qty += newSkuItem.qty;
-                                } else {
-                                    existingContainer.items.push({ sku: newSkuItem.sku, qty: newSkuItem.qty });
-                                }
+                                if (existingSku) existingSku.qty += newSkuItem.qty;
+                                else existingContainer.items.push({ sku: newSkuItem.sku, qty: newSkuItem.qty });
                             });
                             existingContainer.qty = Math.max(existingContainer.qty, calculatedItemsQty);
                         } else if (finalToteQty > existingContainer.qty) {
@@ -436,17 +448,6 @@
                         }
                     }
                 });
-            } else {
-                let stationDirectQty = extractContainerQty(item);
-                if (stationDirectQty > 0) {
-                    let fallbackToteId = "DIRECT-STATION-QTY";
-                    let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
-                    if (!existingContainer) {
-                        targetMap[station].containers.push({ containerId: fallbackToteId, qty: stationDirectQty, items: [] });
-                    } else {
-                        existingContainer.qty += stationDirectQty;
-                    }
-                }
             }
         });
     }
@@ -484,7 +485,7 @@
                             qty: qtyVal,
                             items: []
                         });
-                    } else if (existingContainer.qty === 0) {
+                    } else if (existingContainer.qty < qtyVal) {
                         existingContainer.qty = qtyVal;
                     }
                 }
@@ -511,7 +512,6 @@
     function renderStationRow(tbody, item) {
         let hasExtraData = item.containers && item.containers.length > 0;
         let isExpanded = expandedStations.has(item.station);
-        let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
 
         let tr = document.createElement("tr");
         if (hasExtraData) {
@@ -526,7 +526,7 @@
             </td>
             <td style="color: #0066c0; font-weight: bold; text-align: right;">
                 ${item.qty}
-                ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+                <span class="badge">${item.toteCount} Totes</span>
             </td>
         `;
         tbody.appendChild(tr);
@@ -549,9 +549,7 @@
                     ? container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') 
                     : `x${container.qty} items`;
 
-                let cellLabel = isManual 
-                    ? '📝 Multi-Tab Accumulation' 
-                    : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
 
                 innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
             });
