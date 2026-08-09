@@ -43,7 +43,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks below. Station totals dynamically sync with tote sums across multiple links.</p>
+    <p>Paste station data or JSON blocks below. Multi-column web table copies are automatically cleaned.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -104,7 +104,7 @@
     }
 
     function isInvalidKey(idStr) {
-        return /^(totalQty|qty|quantity|count|totalItems|itemCount|station|stationName|containers|totes|scannables|items|sku|status|location|scannable|tote|id|name)$/i.test(idStr);
+        return /^(totalQty|qty|quantity|count|totalItems|itemCount|station|stationName|containers|totes|scannables|items|sku|status|location|scannable|tote|id|name|EI|UI|OK|NO|ALL)$/i.test(idStr);
     }
 
     function calculateTotals() {
@@ -113,6 +113,8 @@
             alert("Please paste data into the box first!");
             return;
         }
+
+        accumulatedDataGlobal = {}; // Clear state on new processing run
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         
@@ -129,13 +131,11 @@
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             
-            // Filter out invalid tote keys and 0-qty containers
             itemData.containers = itemData.containers.filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
 
             let sumTotes = 0;
             itemData.containers.forEach(c => { sumTotes += c.qty; });
 
-            // Station total strictly equals the sum of its totes if totes exist
             let finalQty = sumTotes > 0 ? sumTotes : (itemData.headerQty || 0);
 
             return { 
@@ -157,6 +157,54 @@
         }
     }
 
+    function extractToteAndQty(line) {
+        let tokens = line.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
+        if (tokens.length === 0) return null;
+
+        let toteIndex = -1;
+        let toteId = null;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let tok = tokens[i];
+            if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
+
+            if (/^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) || (/^[a-zA-Z0-9_-]{6,}$/.test(tok) && /[a-zA-Z]/.test(tok) && /\d/.test(tok))) {
+                toteId = tok;
+                toteIndex = i;
+                break;
+            }
+        }
+
+        if (!toteId) return null;
+
+        let explicitMatch = line.match(/(\d+)\s*items?/i);
+        if (explicitMatch) {
+            return { id: toteId, qty: parseInt(explicitMatch[1], 10) };
+        }
+
+        let numbersAfter = [];
+        for (let i = toteIndex + 1; i < tokens.length; i++) {
+            let n = parseInt(tokens[i].replace(/[,;]/g, ''), 10);
+            if (!isNaN(n)) numbersAfter.push(n);
+        }
+
+        if (numbersAfter.length > 0) {
+            return { id: toteId, qty: numbersAfter[0] };
+        }
+
+        let numbersBefore = [];
+        for (let i = 0; i < toteIndex; i++) {
+            let n = parseInt(tokens[i].replace(/[,;]/g, ''), 10);
+            if (!isNaN(n)) numbersBefore.push(n);
+        }
+
+        if (numbersBefore.length > 0) {
+            return { id: toteId, qty: numbersBefore[numbersBefore.length - 1] };
+        }
+
+        return null;
+    }
+
     function processTextDirect(rawText, targetMap) {
         let lines = rawText.split('\n');
         let activeStation = null;
@@ -169,7 +217,6 @@
             if (matchStation && (clean.toUpperCase().includes("DZ-P") || clean.toUpperCase().includes("BUFFER"))) {
                 activeStation = matchStation[1].toUpperCase().trim();
                 
-                // Extract ONLY numbers occurring AFTER the station name
                 let remainder = clean.substring(matchStation.index + matchStation[0].length).trim();
                 let headerMatch = remainder.match(/^[\s\(:=]*(\d+)[\s\)]*$/);
                 let headerVal = headerMatch ? parseInt(headerMatch[1], 10) : 0;
@@ -183,31 +230,13 @@
             }
 
             if (activeStation) {
-                let parts = clean.split(/\s+/).filter(p => p.length > 0);
-                if (parts.length >= 1) {
-                    let rawId = parts[0].trim();
-                    let scannableId = rawId.replace(/["':,{} [\]]/g, '').trim();
-
-                    if (!scannableId || isInvalidKey(scannableId) || !/^[a-zA-Z0-9_\-]+$/.test(scannableId)) continue;
-
-                    let numbers = parts.slice(1).map(p => parseInt(p.replace(/[,;]/g, ''), 10)).filter(n => !isNaN(n));
-                    let qtyVal = numbers.length > 0 ? numbers[numbers.length - 1] : NaN;
-
-                    if (isNaN(qtyVal) && i + 1 < lines.length) {
-                        let nextLine = lines[i + 1].trim().replace(/[,;]/g, '');
-                        if (/^\d+$/.test(nextLine)) {
-                            qtyVal = parseInt(nextLine, 10);
-                            i++;
-                        }
-                    }
-
-                    if (scannableId && !isNaN(qtyVal) && qtyVal > 0) {
-                        let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === scannableId.toLowerCase());
-                        if (!existing) {
-                            targetMap[activeStation].containers.push({ containerId: scannableId, qty: qtyVal });
-                        } else {
-                            existing.qty = Math.max(existing.qty, qtyVal);
-                        }
+                let parsedTote = extractToteAndQty(clean);
+                if (parsedTote && parsedTote.qty > 0) {
+                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === parsedTote.id.toLowerCase());
+                    if (!existing) {
+                        targetMap[activeStation].containers.push({ containerId: parsedTote.id, qty: parsedTote.qty });
+                    } else {
+                        existing.qty = Math.max(existing.qty, parsedTote.qty);
                     }
                 }
             }
