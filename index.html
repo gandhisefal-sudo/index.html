@@ -4,201 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>3-Column Station Quantity Accumulator</title>
-    <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
-            background-color: #f4f6f9;
-            color: #333;
-        }
-        .container {
-            max-width: 1450px;
-            margin: 0 auto;
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-        h2 {
-            color: #0066c0;
-            margin-top: 0;
-            border-bottom: 2px solid #e7e9ec;
-            padding-bottom: 10px;
-        }
-        textarea {
-            width: 100%;
-            height: 130px;
-            padding: 12px;
-            border: 1px solid #a6a6a6;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            box-sizing: border-box;
-            background-color: #fafafa;
-        }
-        .btn-group {
-            margin-top: 12px;
-            display: flex;
-            gap: 10px;
-        }
-        button {
-            padding: 10px 18px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+        .container { max-width: 1450px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        h2 { color: #0066c0; margin-top: 0; border-bottom: 2px solid #e7e9ec; padding-bottom: 10px; }
+        textarea { width: 100%; height: 140px; padding: 12px; border: 1px solid #a6a6a6; border-radius: 4px; font-family: monospace; font-size: 0.9rem; box-sizing: border-box; background-color: #fafafa; }
+        .btn-group { margin-top: 12px; display: flex; gap: 10px; }
+        button { padding: 10px 18px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
         .btn-process { background-color: #2cba00; color: white; }
-        .btn-process:hover { background-color: #249700; }
         .btn-excel { background-color: #107c41; color: white; }
-        .btn-excel:hover { background-color: #0b5a2f; }
         .btn-clear { background-color: #a6a6a6; color: white; }
-        .btn-clear:hover { background-color: #8c8c8c; }
-        .sort-section {
-            margin-top: 18px;
-            background: #f7f9fa;
-            padding: 10px 15px;
-            border-radius: 4px;
-            border: 1px solid #e7e9ec;
-            display: none;
-        }
-        .sort-btn {
-            background: #fff;
-            border: 1px solid #a6a6a6;
-            padding: 4px 10px;
-            font-size: 0.85rem;
-            color: #333;
-            border-radius: 4px;
-            margin-right: 5px;
-            cursor: pointer;
-        }
-        .sort-btn:hover { background: #eef2f5; }
-
-        .floors-container {
-            display: flex;
-            gap: 18px;
-            margin-top: 20px;
-            align-items: flex-start;
-        }
-        .floor-column {
-            flex: 1;
-            background: #fff;
-            border: 1px solid #dcdfe4;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-            overflow: hidden;
-        }
-        .floor-header {
-            background-color: #0066c0;
-            color: #ffffff;
-            padding: 12px 15px;
-            font-size: 1.05rem;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .floor-subtext {
-            font-size: 0.75rem;
-            font-weight: normal;
-            opacity: 0.85;
-            display: block;
-        }
-        .floor-total-badge {
-            background: rgba(255,255,255,0.25);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: bold;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #fff;
-        }
-        th, td {
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 1px solid #e7e9ec;
-            font-size: 0.88rem;
-        }
-        th {
-            background-color: #f7f9fa;
-            color: #555;
-            font-weight: 600;
-            font-size: 0.78rem;
-            text-transform: uppercase;
-        }
-        
-        .field-subheader {
-            background-color: #eaf2fb;
-            color: #004085;
-            font-weight: bold;
-            font-size: 0.82rem;
-            letter-spacing: 0.5px;
-            border-top: 2px solid #b8daff;
-            border-bottom: 1px solid #b8daff;
-        }
-
+        .sort-section { margin-top: 18px; background: #f7f9fa; padding: 10px 15px; border-radius: 4px; border: 1px solid #e7e9ec; display: none; }
+        .sort-btn { background: #fff; border: 1px solid #a6a6a6; padding: 4px 10px; font-size: 0.85rem; border-radius: 4px; margin-right: 5px; cursor: pointer; }
+        .floors-container { display: flex; gap: 18px; margin-top: 20px; align-items: flex-start; }
+        .floor-column { flex: 1; background: #fff; border: 1px solid #dcdfe4; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden; }
+        .floor-header { background-color: #0066c0; color: #ffffff; padding: 12px 15px; font-size: 1.05rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .floor-subtext { font-size: 0.75rem; font-weight: normal; opacity: 0.85; display: block; }
+        .floor-total-badge { background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; background: #fff; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e7e9ec; font-size: 0.88rem; }
+        th { background-color: #f7f9fa; color: #555; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
+        .field-subheader { background-color: #eaf2fb; color: #004085; font-weight: bold; font-size: 0.82rem; letter-spacing: 0.5px; border-top: 2px solid #b8daff; border-bottom: 1px solid #b8daff; }
         .station-row-interactive { cursor: pointer; }
         .station-row-interactive:hover { background-color: #f0f7fc; }
-        .badge {
-            background-color: #e1f0fc;
-            color: #0066c0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-left: 4px;
-        }
+        .badge { background-color: #e1f0fc; color: #0066c0; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 4px; }
         .nested-row { background-color: #fcfdfe; }
-        .nested-container-box {
-            padding: 10px;
-            border-left: 3px solid #0066c0;
-            background: #f7fafd;
-            margin: 4px 0;
-            font-size: 0.8rem;
-        }
-        .inner-data-table {
-            width: 100%;
-            margin-top: 5px;
-            background: transparent;
-        }
+        .nested-container-box { padding: 10px; border-left: 3px solid #0066c0; background: #f7fafd; margin: 4px 0; font-size: 0.8rem; }
+        .inner-data-table { width: 100%; margin-top: 5px; background: transparent; }
         .inner-data-table th { background: #edf4fa; padding: 6px; }
         .inner-data-table td { padding: 6px; background: #fff; }
         .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
-        .tote-link:hover { text-decoration: underline; }
-        .no-data-msg {
-            padding: 20px;
-            text-align: center;
-            color: #888;
-            font-style: italic;
-        }
-        .grand-summary-bar {
-            margin-top: 20px;
-            padding: 15px;
-            background: #2c3e50;
-            color: white;
-            border-radius: 6px;
-            display: none;
-            justify-content: space-between;
-            font-size: 1.1rem;
-            font-weight: bold;
-        }
+        .no-data-msg { padding: 20px; text-align: center; color: #888; font-style: italic; }
+        .grand-summary-bar { margin-top: 20px; padding: 15px; background: #2c3e50; color: white; border-radius: 6px; display: none; justify-content: space-between; font-size: 1.1rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks. Stations auto-sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns.</p>
+    <p>Paste station data or JSON blocks below. Accumulates quantities dynamically across links for identical stations.</p>
     
-    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
+    <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
@@ -215,70 +62,26 @@
     </div>
 
     <div class="floors-container">
-        <!-- DZ-P-A2000 Column -->
         <div class="floor-column">
             <div class="floor-header">
-                <div>
-                    DZ-P-A2000
-                    <span class="floor-subtext">A2 & B2 Fields</span>
-                </div>
+                <div>DZ-P-A2000 <span class="floor-subtext">A2 & B2 Fields</span></div>
                 <span class="floor-total-badge" id="badge-A2000">0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station Name</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A2000">
-                    <tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr>
-                </tbody>
-            </table>
+            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A2000"><tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr></tbody></table>
         </div>
-
-        <!-- DZ-P-A3000 Column -->
         <div class="floor-column">
             <div class="floor-header">
-                <div>
-                    DZ-P-A3000
-                    <span class="floor-subtext">A3 & B3 Fields</span>
-                </div>
+                <div>DZ-P-A3000 <span class="floor-subtext">A3 & B3 Fields</span></div>
                 <span class="floor-total-badge" id="badge-A3000">0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station Name</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A3000">
-                    <tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr>
-                </tbody>
-            </table>
+            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A3000"><tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr></tbody></table>
         </div>
-
-        <!-- DZ-P-A4000 Column -->
         <div class="floor-column">
             <div class="floor-header">
-                <div>
-                    DZ-P-A4000
-                    <span class="floor-subtext">A4 & B4 Fields</span>
-                </div>
+                <div>DZ-P-A4000 <span class="floor-subtext">A4 & B4 Fields</span></div>
                 <span class="floor-total-badge" id="badge-A4000">0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station Name</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A4000">
-                    <tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr>
-                </tbody>
-            </table>
+            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A4000"><tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr></tbody></table>
         </div>
     </div>
 
@@ -300,30 +103,6 @@
         return "A2000";
     }
 
-    // Deep search to extract unit counts across any unknown JSON keys
-    function extractQuantityDeep(obj) {
-        if (obj === null || obj === undefined) return 0;
-        if (typeof obj === 'number') return obj;
-        if (typeof obj === 'string' && !isNaN(obj) && obj.trim() !== '') return parseInt(obj, 10);
-
-        if (typeof obj === 'object') {
-            const knownKeys = ['items', 'qty', 'quantity', 'itemCount', 'itemsCount', 'count', 'totalItems', 'unitCount', 'items_count', 'totalQuantity', 'expectedCount', 'numItems', 'size'];
-            for (let k of knownKeys) {
-                if (obj[k] !== undefined && typeof obj[k] !== 'object') {
-                    let parsed = parseInt(obj[k], 10);
-                    if (!isNaN(parsed) && parsed > 0) return parsed;
-                }
-            }
-            for (let key in obj) {
-                if (typeof obj[key] === 'object' && obj[key] !== null) {
-                    let res = extractQuantityDeep(obj[key]);
-                    if (res > 0) return res;
-                }
-            }
-        }
-        return 0;
-    }
-
     function calculateTotals() {
         let rawText = document.getElementById("inputBox").value;
         if (!rawText.trim()) {
@@ -332,36 +111,38 @@
         }
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        
+        // Process text and JSON without resetting global memory to allow tab-by-tab accumulation
+        processTextDirect(sanitizedText, accumulatedDataGlobal);
+
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        jsonBlocks.forEach(block => {
+            try {
+                let parsed = JSON.parse(block);
+                processJsonArray(Array.isArray(parsed) ? parsed : [parsed], accumulatedDataGlobal);
+            } catch (e) {}
+        });
 
-        if (jsonBlocks.length > 0) {
-            jsonBlocks.forEach(block => {
-                try {
-                    let parsedJson = JSON.parse(block);
-                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
-                    processJsonArray(normalizedArray, accumulatedDataGlobal);
-                } catch (e) {
-                    console.error("JSON parse error", e);
-                }
-            });
-        }
-
-        // Always run text fallback to catch raw tab-separated tables
-        processTextFallback(sanitizedText, accumulatedDataGlobal);
-
+        // Filter and compile current state
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
-            let finalStationQty = 0;
-            itemData.containers.forEach(c => { finalStationQty += c.qty; });
+            
+            // STRICT FILTER: Remove 0 qty totes completely
+            itemData.containers = itemData.containers.filter(c => c.qty > 0);
+
+            let sumTotes = 0;
+            itemData.containers.forEach(c => { sumTotes += c.qty; });
+
+            let finalQty = Math.max(sumTotes, itemData.headerQty || 0);
 
             return { 
                 station: key, 
                 group: getFloorGroup(key),
                 toteCount: itemData.containers.length,
-                qty: finalStationQty, 
+                qty: finalQty, 
                 containers: itemData.containers 
             };
-        });
+        }).filter(item => item.qty > 0); // Exclude stations with 0 total units
 
         if (currentSortedList.length > 0) {
             sortData('name', 'asc');
@@ -369,14 +150,55 @@
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid DZ-P or BUFFER data rows were identified.");
+            alert("No valid DZ-P or BUFFER stations with quantity > 0 were found.");
         }
     }
 
-    function extractTopLevelJSONBlocks(text) {
-        let blocks = [];
-        let bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
+    function processTextDirect(rawText, targetMap) {
+        let lines = rawText.split('\n');
+        let activeStation = null;
 
+        lines.forEach(line => {
+            let clean = line.trim();
+            if (!clean) return;
+
+            let matchStation = clean.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)(?:\s+(\d+))?/i);
+            if (matchStation && (clean.toUpperCase().includes("DZ-P") || clean.toUpperCase().includes("BUFFER"))) {
+                activeStation = matchStation[1].toUpperCase().trim();
+                let headerVal = matchStation[2] ? parseInt(matchStation[2], 10) : 0;
+
+                if (!targetMap[activeStation]) {
+                    targetMap[activeStation] = { headerQty: headerVal, containers: [] };
+                } else if (headerVal > targetMap[activeStation].headerQty) {
+                    targetMap[activeStation].headerQty = headerVal;
+                }
+                return;
+            }
+
+            if (activeStation) {
+                let parts = clean.split(/\s+/);
+                if (parts.length >= 2) {
+                    let scannableId = parts[0].trim();
+                    let qtyVal = parseInt(parts[1].trim(), 10);
+
+                    // Ignore 0 qty totes
+                    if (scannableId && !isNaN(qtyVal) && qtyVal > 0) {
+                        if (/^(Scannable|Tote|Items|SKU|Qty|Count)/i.test(scannableId)) return;
+
+                        let existing = targetMap[activeStation].containers.find(c => c.containerId === scannableId);
+                        if (!existing) {
+                            targetMap[activeStation].containers.push({ containerId: scannableId, qty: qtyVal, items: [] });
+                        } else {
+                            existing.qty = Math.max(existing.qty, qtyVal);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function extractTopLevelJSONBlocks(text) {
+        let blocks = [], bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
         for (let i = 0; i < text.length; i++) {
             let char = text[i];
             if (char === '"' && text[i - 1] !== '\\') { inString = !inString; continue; }
@@ -400,95 +222,26 @@
 
     function processJsonArray(array, targetMap) {
         array.forEach(item => {
-            let station = (item.station || item.stationName || item.location || item.workstation || item.name || "").toString().toUpperCase().trim();
-            if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
-            
-            if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
-            
-            let containerList = item.containers || item.totes || item.scannables || item.childContainers || item.inventory;
+            let stationRaw = (item.station || item.stationName || item.location || item.name || "").toString();
+            let match = stationRaw.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
+            if (!match) return;
 
-            if (containerList && Array.isArray(containerList)) {
-                containerList.forEach(newContainer => {
-                    let containerIdClean = (newContainer.containerId || newContainer.scannableId || newContainer.toteId || newContainer.id || newContainer.barcode || "").toString().trim();
-                    if (!containerIdClean) return;
+            let station = match[1].toUpperCase().trim();
+            if (!targetMap[station]) targetMap[station] = { headerQty: 0, containers: [] };
 
-                    let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
+            let containerList = item.containers || item.totes || item.scannables;
+            if (Array.isArray(containerList)) {
+                containerList.forEach(c => {
+                    let id = (c.containerId || c.scannableId || c.toteId || c.id || "").toString().trim();
+                    let q = parseInt(c.qty || c.quantity || c.itemCount || c.count || c.totalItems || 0, 10);
                     
-                    let declaredQty = extractQuantityDeep(newContainer);
-                    let calculatedItemsQty = 0;
-                    let skuList = [];
-
-                    let innerItems = newContainer.items || newContainer.skus || newContainer.contents;
-                    if (innerItems && Array.isArray(innerItems) && innerItems.length > 0) {
-                        innerItems.forEach(it => {
-                            let itemQty = extractQuantityDeep(it) || 1;
-                            skuList.push({ sku: it.sku || it.fnsku || it.asin || "SKU-ITEM", qty: itemQty });
-                            calculatedItemsQty += itemQty;
-                        });
-                    }
-
-                    let finalToteQty = calculatedItemsQty > 0 ? calculatedItemsQty : declaredQty;
-
-                    if (!existingContainer) {
-                        targetMap[station].containers.push({
-                            containerId: containerIdClean,
-                            qty: finalToteQty,
-                            items: skuList
-                        });
-                    } else {
-                        if (skuList.length > 0) {
-                            skuList.forEach(newSkuItem => {
-                                let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
-                                if (existingSku) existingSku.qty += newSkuItem.qty;
-                                else existingContainer.items.push({ sku: newSkuItem.sku, qty: newSkuItem.qty });
-                            });
-                            existingContainer.qty = Math.max(existingContainer.qty, calculatedItemsQty);
-                        } else if (finalToteQty > existingContainer.qty) {
-                            existingContainer.qty = finalToteQty;
-                        }
+                    // Exclude 0 qty
+                    if (id && q > 0) {
+                        let existing = targetMap[station].containers.find(x => x.containerId === id);
+                        if (!existing) targetMap[station].containers.push({ containerId: id, qty: q, items: [] });
+                        else existing.qty = Math.max(existing.qty, q);
                     }
                 });
-            }
-        });
-    }
-
-    function processTextFallback(rawText, targetMap) {
-        let lines = rawText.split('\n');
-        let activeStation = null;
-
-        lines.forEach(line => {
-            let cleanLine = line.trim();
-            if (!cleanLine) return;
-
-            let parts = cleanLine.split(/\t+/);
-            if (parts.length < 2) parts = cleanLine.split(/\s{2,}/);
-
-            let firstToken = parts[0].trim().toUpperCase();
-
-            if (firstToken.includes("DZ-P") || firstToken.includes("BUFFER")) {
-                activeStation = firstToken;
-                if (!targetMap[activeStation]) targetMap[activeStation] = { qty: 0, containers: [] };
-                return;
-            }
-
-            if (activeStation && parts.length >= 2) {
-                let scannableId = parts[0].trim();
-                let qtyVal = parseInt(parts[1].trim(), 10);
-
-                if (scannableId && !isNaN(qtyVal) && qtyVal > 0) {
-                    if (/^(Scannable|Tote|Items|SKU|Qty|Count)/i.test(scannableId)) return;
-
-                    let existingContainer = targetMap[activeStation].containers.find(c => c.containerId === scannableId);
-                    if (!existingContainer) {
-                        targetMap[activeStation].containers.push({
-                            containerId: scannableId,
-                            qty: qtyVal,
-                            items: []
-                        });
-                    } else if (existingContainer.qty < qtyVal) {
-                        existingContainer.qty = qtyVal;
-                    }
-                }
             }
         });
     }
@@ -510,52 +263,45 @@
     }
 
     function renderStationRow(tbody, item) {
-        let hasExtraData = item.containers && item.containers.length > 0;
+        let activeContainers = (item.containers || []).filter(c => c.qty > 0);
+        let hasContainers = activeContainers.length > 0;
         let isExpanded = expandedStations.has(item.station);
 
         let tr = document.createElement("tr");
-        if (hasExtraData) {
+        if (hasContainers) {
             tr.className = "station-row-interactive";
             tr.onclick = () => toggleStation(item.station);
         }
 
         tr.innerHTML = `
             <td style="font-family: monospace; font-weight: bold;">
-                ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                ${hasContainers ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
                 ${item.station}
             </td>
             <td style="color: #0066c0; font-weight: bold; text-align: right;">
                 ${item.qty}
-                <span class="badge">${item.toteCount} Totes</span>
+                <span class="badge">${activeContainers.length} Totes</span>
             </td>
         `;
         tbody.appendChild(tr);
 
-        if (hasExtraData && isExpanded) {
+        if (hasContainers && isExpanded) {
             let nestedTr = document.createElement("tr");
             nestedTr.className = "nested-row";
-
-            let innerHtmlMarkup = `
+            let innerHtml = `
                 <td colspan="2">
                     <div class="nested-container-box">
                         <strong>📦 Totes Under ${item.station}:</strong>
                         <table class="inner-data-table">
-                            <thead><tr><th>Tote ID / Scannable</th><th>SKUs & Qty</th></tr></thead>
+                            <thead><tr><th>Tote ID</th><th>Quantity</th></tr></thead>
                             <tbody>
             `;
-
-            item.containers.forEach(container => {
-                let skuDetails = container.items.length > 0 
-                    ? container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') 
-                    : `x${container.qty} items`;
-
-                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
-
-                innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
+            activeContainers.forEach(c => {
+                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${c.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${c.containerId}</a>`;
+                innerHtml += `<tr><td>${cellLabel}</td><td>${c.qty} items</td></tr>`;
             });
-
-            innerHtmlMarkup += `</tbody></table></div></td>`;
-            nestedTr.innerHTML = innerHtmlMarkup;
+            innerHtml += `</tbody></table></div></td>`;
+            nestedTr.innerHTML = innerHtml;
             tbody.appendChild(nestedTr);
         }
     }
@@ -583,25 +329,21 @@
                 return;
             }
 
-            let aFieldItems = groups[g].filter(item => !/DZ-P-B/i.test(item.station));
-            let bFieldItems = groups[g].filter(item => /DZ-P-B/i.test(item.station));
+            let aField = groups[g].filter(i => !/DZ-P-B/i.test(i.station));
+            let bField = groups[g].filter(i => /DZ-P-B/i.test(i.station));
 
-            if (aFieldItems.length > 0) {
-                let floorNum = g.charAt(1);
-                let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 A${floorNum} STATIONS</td>`;
-                tbody.appendChild(headerTr);
-
-                aFieldItems.forEach(item => renderStationRow(tbody, item));
+            if (aField.length > 0) {
+                let h = document.createElement("tr");
+                h.innerHTML = `<td colspan="2" class="field-subheader">📍 A${g.charAt(1)} STATIONS</td>`;
+                tbody.appendChild(h);
+                aField.forEach(i => renderStationRow(tbody, i));
             }
 
-            if (bFieldItems.length > 0) {
-                let floorNum = g.charAt(1);
-                let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 B${floorNum} STATIONS (BUFFER)</td>`;
-                tbody.appendChild(headerTr);
-
-                bFieldItems.forEach(item => renderStationRow(tbody, item));
+            if (bField.length > 0) {
+                let h = document.createElement("tr");
+                h.innerHTML = `<td colspan="2" class="field-subheader">📍 B${g.charAt(1)} STATIONS (BUFFER)</td>`;
+                tbody.appendChild(h);
+                bField.forEach(i => renderStationRow(tbody, i));
             }
         });
 
@@ -609,28 +351,18 @@
     }
 
     function exportToExcel() {
-        if (currentSortedList.length === 0) {
-            alert("Please process some data first before exporting!");
-            return;
-        }
-
-        let excelData = [];
-        currentSortedList.forEach(item => {
-            let fieldType = /DZ-P-B/i.test(item.station) ? "B-Field" : "A-Field";
-            excelData.push({
-                "Group": item.group,
-                "Field Type": fieldType,
-                "Station Name": item.station,
-                "Totes / Containers": item.toteCount,
-                "Aggregated Unit Count": item.qty
-            });
-        });
-
-        let worksheet = XLSX.utils.json_to_sheet(excelData);
-        let workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
-
-        XLSX.writeFile(workbook, "DZ-P_Separated_Field_Accumulation.xlsx");
+        if (currentSortedList.length === 0) return alert("Process data before exporting!");
+        let data = currentSortedList.map(i => ({
+            "Group": i.group,
+            "Field": /DZ-P-B/i.test(i.station) ? "B-Field" : "A-Field",
+            "Station Name": i.station,
+            "Tote Count": (i.containers || []).filter(c => c.qty > 0).length,
+            "Total Quantity": i.qty
+        }));
+        let ws = XLSX.utils.json_to_sheet(data);
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Summary");
+        XLSX.writeFile(wb, "Station_Summary.xlsx");
     }
 
     function clearAll() {
@@ -646,6 +378,5 @@
         document.getElementById("grandSummary").style.display = "none";
     }
 </script>
-
 </body>
 </html>
