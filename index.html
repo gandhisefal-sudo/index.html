@@ -43,7 +43,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or JSON blocks below. Strict barcode filtering enabled.</p>
+    <p>Paste station data or JSON blocks below. Station totals dynamically sync with tote sums across multiple links.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -129,13 +129,14 @@
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             
-            // Filter out invalid keys and 0-qty containers
+            // Filter out invalid tote keys and 0-qty containers
             itemData.containers = itemData.containers.filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
 
             let sumTotes = 0;
             itemData.containers.forEach(c => { sumTotes += c.qty; });
 
-            let finalQty = Math.max(sumTotes, itemData.headerQty || 0);
+            // Station total strictly equals the sum of its totes if totes exist
+            let finalQty = sumTotes > 0 ? sumTotes : (itemData.headerQty || 0);
 
             return { 
                 station: key, 
@@ -168,11 +169,10 @@
             if (matchStation && (clean.toUpperCase().includes("DZ-P") || clean.toUpperCase().includes("BUFFER"))) {
                 activeStation = matchStation[1].toUpperCase().trim();
                 
-                let numbersOnLine = clean.match(/\b\d+\b/g);
-                let headerVal = 0;
-                if (numbersOnLine && numbersOnLine.length > 0) {
-                    headerVal = parseInt(numbersOnLine[numbersOnLine.length - 1], 10);
-                }
+                // Extract ONLY numbers occurring AFTER the station name
+                let remainder = clean.substring(matchStation.index + matchStation[0].length).trim();
+                let headerMatch = remainder.match(/^[\s\(:=]*(\d+)[\s\)]*$/);
+                let headerVal = headerMatch ? parseInt(headerMatch[1], 10) : 0;
 
                 if (!targetMap[activeStation]) {
                     targetMap[activeStation] = { headerQty: headerVal, containers: [] };
@@ -186,7 +186,6 @@
                 let parts = clean.split(/\s+/).filter(p => p.length > 0);
                 if (parts.length >= 1) {
                     let rawId = parts[0].trim();
-                    // Strip quotes, colons, commas, braces
                     let scannableId = rawId.replace(/["':,{} [\]]/g, '').trim();
 
                     if (!scannableId || isInvalidKey(scannableId) || !/^[a-zA-Z0-9_\-]+$/.test(scannableId)) continue;
