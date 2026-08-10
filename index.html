@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unified 3-Column Accumulator</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 20px; color: #333; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 20px; color: #333; }
     .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
     h2 { margin-top: 0; color: #0066c0; font-size: 22px; display: flex; align-items: center; gap: 8px; }
     p.subtitle { color: #555; font-size: 14px; margin-bottom: 12px; }
@@ -73,7 +74,7 @@
   </div>
 
   <script>
-    // Persistent state initialization
+    // Initialize state from local storage so refreshes retain cumulative totals
     let masterInventory = {};
     try {
       masterInventory = JSON.parse(localStorage.getItem('fc_master_inventory')) || {};
@@ -87,22 +88,83 @@
       const rawText = document.getElementById('input-data').value;
       if (!rawText.trim()) return;
 
-      const lines = rawText.trim().split('\n');
-      lines.forEach(line => {
-        const cols = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
-        if (cols.length >= 2) {
-          const station = cols[0].replace(/\s+md-A$/i, '');
-          const count = parseInt(cols[1], 10);
-          
-          if (station && !isNaN(count) && !station.toLowerCase().includes('scannable id')) {
-            masterInventory[station] = (masterInventory[station] || 0) + count;
-          }
-        }
+      const parsedItems = parseInputData(rawText);
+
+      if (parsedItems.length === 0) {
+        alert("No valid station/quantity data found. Please check copied text.");
+        return;
+      }
+
+      // Add quantities continuously across multiple pastes
+      parsedItems.forEach(({ station, count }) => {
+        masterInventory[station] = (masterInventory[station] || 0) + count;
       });
 
       localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
       document.getElementById('input-data').value = '';
       renderTables();
+    }
+
+    // Dynamic parser for JSON outputs and copied web table rows
+    function parseInputData(rawText) {
+      const results = [];
+      const cleaned = rawText.trim();
+
+      // 1. Check for JSON format ("Copy Totes & Items" button)
+      if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(cleaned);
+          const list = Array.isArray(parsed) ? parsed : [parsed];
+          
+          list.forEach(item => {
+            const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id;
+            const count = item.items ?? item.itemCount ?? item.quantity ?? item.count;
+
+            if (station && !isNaN(parseInt(count, 10))) {
+              const cleanStation = String(station).replace(/\s+md-A$/i, '').trim();
+              results.push({ station: cleanStation, count: parseInt(count, 10) });
+            }
+          });
+
+          if (results.length > 0) return results;
+        } catch (e) {
+          // Fall back to line-by-line parsing if JSON fails
+        }
+      }
+
+      // 2. Line-by-line text parser
+      const lines = cleaned.split(/\r?\n/);
+
+      lines.forEach(line => {
+        if (!line.trim()) return;
+
+        const tokens = line.split(/\t+|\s{2,}/).map(t => t.trim()).filter(Boolean);
+
+        let station = null;
+        let count = null;
+
+        // Locate station ID and numeric count anywhere on the line
+        tokens.forEach(token => {
+          if (/^\d+$/.test(token) && count === null) {
+            count = parseInt(token, 10);
+          } else if (/(dz-|cv|A\d|B\d|P\d)/i.test(token) && !station) {
+            station = token;
+          }
+        });
+
+        if (!station && tokens.length >= 2) {
+          station = tokens.find(t => !/^\d+$/.test(t) && !/^(scannable|items|container|status|ei|14)$/i.test(t));
+        }
+
+        if (station && count !== null && !isNaN(count)) {
+          const cleanStation = station.replace(/\s+md-A$/i, '').trim();
+          if (!cleanStation.toLowerCase().includes('scannable id')) {
+            results.push({ station: cleanStation, count });
+          }
+        }
+      });
+
+      return results;
     }
 
     function getFloorGroup(station) {
@@ -174,6 +236,10 @@
     }
 
     function exportToExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert("SheetJS library not loaded.");
+        return;
+      }
       const rows = [['Station Name', 'Count', 'Floor', 'Field']];
       Object.keys(masterInventory).forEach(station => {
         rows.push([
