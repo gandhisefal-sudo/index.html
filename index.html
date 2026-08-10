@@ -74,7 +74,6 @@
   </div>
 
   <script>
-    // Initialize state from local storage so refreshes retain cumulative totals
     let masterInventory = {};
     try {
       masterInventory = JSON.parse(localStorage.getItem('fc_master_inventory')) || {};
@@ -95,71 +94,79 @@
         return;
       }
 
-      // Add quantities continuously across multiple pastes
       parsedItems.forEach(({ station, count }) => {
         masterInventory[station] = (masterInventory[station] || 0) + count;
       });
 
-      localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
+      try {
+        localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
+      } catch(e) {}
+
       document.getElementById('input-data').value = '';
       renderTables();
     }
 
-    // Dynamic parser for JSON outputs and copied web table rows
     function parseInputData(rawText) {
       const results = [];
       const cleaned = rawText.trim();
 
-      // 1. Check for JSON format ("Copy Totes & Items" button)
       if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
         try {
           const parsed = JSON.parse(cleaned);
           const list = Array.isArray(parsed) ? parsed : [parsed];
           
           list.forEach(item => {
-            const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id;
+            const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id || item.location;
             const count = item.items ?? item.itemCount ?? item.quantity ?? item.count;
 
-            if (station && !isNaN(parseInt(count, 10))) {
-              const cleanStation = String(station).replace(/\s+md-A$/i, '').trim();
-              results.push({ station: cleanStation, count: parseInt(count, 10) });
+            if (station && count !== undefined && !isNaN(parseInt(count, 10))) {
+              results.push({ 
+                station: String(station).replace(/\s+md-A$/i, '').trim(), 
+                count: parseInt(count, 10) 
+              });
             }
           });
 
           if (results.length > 0) return results;
-        } catch (e) {
-          // Fall back to line-by-line parsing if JSON fails
-        }
+        } catch (e) {}
       }
 
-      // 2. Line-by-line text parser
       const lines = cleaned.split(/\r?\n/);
 
       lines.forEach(line => {
-        if (!line.trim()) return;
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return;
 
-        const tokens = line.split(/\t+|\s{2,}/).map(t => t.trim()).filter(Boolean);
+        let tokens = trimmedLine.split(/[\t,]+|\s{2,}/).map(t => t.trim()).filter(Boolean);
 
-        let station = null;
-        let count = null;
-
-        // Locate station ID and numeric count anywhere on the line
-        tokens.forEach(token => {
-          if (/^\d+$/.test(token) && count === null) {
-            count = parseInt(token, 10);
-          } else if (/(dz-|cv|A\d|B\d|P\d)/i.test(token) && !station) {
-            station = token;
-          }
-        });
-
-        if (!station && tokens.length >= 2) {
-          station = tokens.find(t => !/^\d+$/.test(t) && !/^(scannable|items|container|status|ei|14)$/i.test(t));
+        if (tokens.length < 2) {
+          tokens = trimmedLine.split(/\s+/).map(t => t.trim()).filter(Boolean);
         }
 
-        if (station && count !== null && !isNaN(count)) {
-          const cleanStation = station.replace(/\s+md-A$/i, '').trim();
-          if (!cleanStation.toLowerCase().includes('scannable id')) {
-            results.push({ station: cleanStation, count });
+        if (tokens.length >= 2) {
+          let countIdx = -1;
+          for (let i = tokens.length - 1; i >= 0; i--) {
+            const cleanNum = tokens[i].replace(/,/g, '');
+            if (/^\d+$/.test(cleanNum)) {
+              countIdx = i;
+              break;
+            }
+          }
+
+          if (countIdx !== -1) {
+            const count = parseInt(tokens[countIdx].replace(/,/g, ''), 10);
+            
+            const stationCandidates = tokens.filter((t, idx) => 
+              idx !== countIdx && 
+              !/^(scannable|id|items|container|status|count|qty|total|ei|\d+)$/i.test(t)
+            );
+
+            if (stationCandidates.length > 0) {
+              const station = stationCandidates.join(' ').replace(/\s+md-A$/i, '').trim();
+              if (station && !station.toLowerCase().includes('scannable id')) {
+                results.push({ station, count });
+              }
+            }
           }
         }
       });
@@ -229,7 +236,9 @@
     }
 
     function resetCalculator() {
-      localStorage.removeItem('fc_master_inventory');
+      try {
+        localStorage.removeItem('fc_master_inventory');
+      } catch(e) {}
       masterInventory = {};
       document.getElementById('input-data').value = '';
       renderTables();
