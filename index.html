@@ -1,446 +1,290 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3-Column Station Quantity Accumulator</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
-        .container { max-width: 1450px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h2 { color: #0066c0; margin-top: 0; border-bottom: 2px solid #e7e9ec; padding-bottom: 10px; }
-        textarea { width: 100%; height: 140px; padding: 12px; border: 1px solid #a6a6a6; border-radius: 4px; font-family: monospace; font-size: 0.9rem; box-sizing: border-box; background-color: #fafafa; }
-        .btn-group { margin-top: 12px; display: flex; gap: 10px; }
-        button { padding: 10px 18px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
-        .btn-process { background-color: #2cba00; color: white; }
-        .btn-excel { background-color: #107c41; color: white; }
-        .btn-clear { background-color: #d9534f; color: white; }
-        .accum-status { margin-top: 10px; padding: 8px 12px; background: #eaf2fb; border-left: 4px solid #0066c0; color: #004085; font-weight: bold; font-size: 0.85rem; display: none; }
-        .sort-section { margin-top: 18px; background: #f7f9fa; padding: 10px 15px; border-radius: 4px; border: 1px solid #e7e9ec; display: none; }
-        .sort-btn { background: #fff; border: 1px solid #a6a6a6; padding: 4px 10px; font-size: 0.85rem; border-radius: 4px; margin-right: 5px; cursor: pointer; }
-        .floors-container { display: flex; gap: 18px; margin-top: 20px; align-items: flex-start; }
-        .floor-column { flex: 1; background: #fff; border: 1px solid #dcdfe4; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); overflow: hidden; }
-        .floor-header { background-color: #0066c0; color: #ffffff; padding: 12px 15px; font-size: 1.05rem; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .floor-subtext { font-size: 0.75rem; font-weight: normal; opacity: 0.85; display: block; }
-        .floor-total-badge { background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; background: #fff; }
-        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #e7e9ec; font-size: 0.88rem; }
-        th { background-color: #f7f9fa; color: #555; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; }
-        .field-subheader { background-color: #eaf2fb; color: #004085; font-weight: bold; font-size: 0.82rem; letter-spacing: 0.5px; border-top: 2px solid #b8daff; border-bottom: 1px solid #b8daff; }
-        .station-row-interactive { cursor: pointer; }
-        .station-row-interactive:hover { background-color: #f0f7fc; }
-        .badge { background-color: #e1f0fc; color: #0066c0; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-left: 4px; }
-        .nested-row { background-color: #fcfdfe; }
-        .nested-container-box { padding: 10px; border-left: 3px solid #0066c0; background: #f7fafd; margin: 4px 0; font-size: 0.8rem; }
-        .inner-data-table { width: 100%; margin-top: 5px; background: transparent; }
-        .inner-data-table th { background: #edf4fa; padding: 6px; }
-        .inner-data-table td { padding: 6px; background: #fff; }
-        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
-        .no-data-msg { padding: 20px; text-align: center; color: #888; font-style: italic; }
-        .grand-summary-bar { margin-top: 20px; padding: 15px; background: #2c3e50; color: white; border-radius: 6px; display: none; justify-content: space-between; font-size: 1.1rem; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified 3-Column Accumulator</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #f8f9fa; padding: 25px; margin: 0; color: #333; }
+    
+    .header-title { font-size: 24px; font-weight: 700; color: #0056b3; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .header-subtext { color: #555; font-size: 14px; margin-bottom: 15px; }
+
+    textarea {
+      width: 100%; height: 130px; border: 1px solid #ccc; border-radius: 4px;
+      padding: 12px; font-size: 14px; resize: vertical; outline: none; margin-bottom: 15px;
+    }
+    textarea:focus { border-color: #0056b3; box-shadow: 0 0 0 2px rgba(0,86,179,0.2); }
+
+    .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    .btn {
+      border: none; padding: 10px 18px; border-radius: 4px; font-weight: 600;
+      font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: #fff;
+    }
+    .btn-accumulate { background-color: #28a745; }
+    .btn-accumulate:hover { background-color: #218838; }
+    .btn-export { background-color: #1e7e34; }
+    .btn-export:hover { background-color: #196f2e; }
+    .btn-reset { background-color: #dc3545; }
+    .btn-reset:hover { background-color: #c82333; }
+
+    .info-banner {
+      background-color: #e7f1ff; border-left: 4px solid #0d6efd; color: #084298;
+      padding: 12px 16px; border-radius: 4px; font-size: 13.5px; font-weight: 500;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+    }
+
+    .sort-container {
+      background-color: #f1f3f5; border: 1px solid #e9ecef; border-radius: 6px;
+      padding: 8px 15px; display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+    }
+    .sort-label { font-weight: 700; font-size: 13px; color: #495057; }
+    .btn-sort {
+      background: #fff; border: 1px solid #ced4da; padding: 5px 12px;
+      border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 600; color: #333;
+    }
+    .btn-sort:hover { background-color: #e2e6ea; }
+
+    /* 3-Column Card Grid Layout */
+    .grid-container {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    }
+    @media (max-width: 992px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #fff; border-radius: 6px; overflow: hidden;
+      border: 1px solid #dedede; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .card-header {
+      background-color: #0066cc; color: #fff; padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-title { font-size: 16px; font-weight: 700; }
+    .card-subtitle { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .badge-units {
+      background-color: rgba(255, 255, 255, 0.25); color: #fff;
+      padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 700;
+    }
+
+    .card-body { padding: 0; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      background-color: #f8f9fa; color: #6c757d; font-size: 11px;
+      font-weight: 700; text-transform: uppercase; padding: 10px 16px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #f1f3f5; color: #333; }
+    tr:last-child td { border-bottom: none; }
+    .text-right { text-align: right; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs.</p>
-    
-    <textarea id="inputBox" placeholder="Paste data here..."></textarea>
-    
-    <div class="btn-group">
-        <button class="btn-process" onclick="calculateTotals()">➕ Accumulate Data</button>
-        <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
-        <button class="btn-clear" onclick="clearAll()">🗑️ Reset All Data</button>
-    </div>
+  <div class="header-title">📊 Unified 3-Column Accumulator</div>
+  <div class="header-subtext">Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs/links.</div>
 
-    <div id="accumStatus" class="accum-status">
-        🔄 Multi-Hub Accumulation Active: Data from multiple transhipment hubs is merged seamlessly. Click "Reset All Data" to start fresh.
-    </div>
+  <textarea id="inputData" placeholder="Paste data here..."></textarea>
 
-    <div id="sortControls" class="sort-section">
-        <strong>Sort Tables:</strong>
-        <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
-        <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
-        <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
-        <button class="sort-btn" onclick="sortData('qty', 'asc')">Quantity (Low-High)</button>
-    </div>
+  <div class="btn-group">
+    <button class="btn btn-accumulate" onclick="accumulateData()">➕ Accumulate Data</button>
+    <button class="btn btn-export" onclick="exportToExcel()">🏢 Export to Excel</button>
+    <button class="btn btn-reset" onclick="resetAllData()">🗑️ Reset All Data</button>
+  </div>
 
-    <div class="floors-container">
-        <div class="floor-column">
-            <div class="floor-header">
-                <div>DZ-P-A2000 <span class="floor-subtext">A2 & B2 Fields</span></div>
-                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
-            </div>
-            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A2000"><tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr></tbody></table>
-        </div>
-        <div class="floor-column">
-            <div class="floor-header">
-                <div>DZ-P-A3000 <span class="floor-subtext">A3 & B3 Fields</span></div>
-                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
-            </div>
-            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A3000"><tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr></tbody></table>
-        </div>
-        <div class="floor-column">
-            <div class="floor-header">
-                <div>DZ-P-A4000 <span class="floor-subtext">A4 & B4 Fields</span></div>
-                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
-            </div>
-            <table><thead><tr><th>Station Name</th><th style="text-align: right;">Count</th></tr></thead><tbody id="body-A4000"><tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr></tbody></table>
-        </div>
-    </div>
+  <div class="info-banner">
+    🔄 <b>Multi-Hub Accumulation Active:</b> Data from multiple transhipment hubs is currently merged. Click "Reset All Data" to start fresh.
+  </div>
 
-    <div id="grandSummary" class="grand-summary-bar">
-        <span>GRAND TOTAL ALL COLUMNS:</span>
-        <span id="grandTotalUnits">0 Units</span>
-    </div>
-</div>
+  <div class="sort-container">
+    <span class="sort-label">Sort Tables:</span>
+    <button class="btn-sort" onclick="sortData('name-asc')">Station (A-Z)</button>
+    <button class="btn-sort" onclick="sortData('name-desc')">Station (Z-A)</button>
+    <button class="btn-sort" onclick="sortData('qty-desc')">Quantity (High-Low)</button>
+    <button class="btn-sort" onclick="sortData('qty-asc')">Quantity (Low-High)</button>
+  </div>
+
+  <div class="grid-container" id="gridContainer">
+    <!-- Accumulated Station Cards Render Here -->
+  </div>
 
 <script>
-    let accumulatedDataGlobal = {};
-    let currentSortedList = [];
-    let expandedStations = new Set();
+  // In-memory store for accumulated stations across multiple pastes
+  let accumulatorStore = {};
 
-    function getFloorGroup(stationName) {
-        if (/A2|B2/i.test(stationName)) return "A2000";
-        if (/A3|B3/i.test(stationName)) return "A3000";
-        if (/A4|B4/i.test(stationName)) return "A4000";
-        return "A2000";
+  function accumulateData() {
+    const rawInput = document.getElementById('inputData').value.trim();
+    if (!rawInput) return;
+
+    try {
+      // 1. Check if input is JSON format
+      if (rawInput.startsWith('{') || rawInput.startsWith('[')) {
+        const parsed = JSON.parse(rawInput);
+        processParsedData(Array.isArray(parsed) ? parsed : [parsed]);
+      } else {
+        // 2. Parse raw web table paste (Tab-separated or space-separated)
+        processRawText(rawInput);
+      }
+      
+      document.getElementById('inputData').value = '';
+      renderGrid();
+    } catch (e) {
+      alert("Error processing input. Please check the pasted format.");
     }
+  }
 
-    function isInvalidKey(idStr) {
-        return /^(totalQty|qty|quantity|count|totalItems|itemCount|station|stationName|containers|totes|scannables|items|sku|status|location|scannable|tote|id|name|EI|UI|OK|NO|ALL)$/i.test(idStr);
-    }
+  function processParsedData(items) {
+    items.flat(Infinity).forEach(item => {
+      const stationId = (item.stationId || item.scannableId || item['Scannable ID'] || 'UNKNOWN').trim();
+      if (!stationId || stationId === 'UNKNOWN') return;
 
-    function isToteId(tok) {
-        if (!tok || tok.length < 4 || tok.length > 30) return false;
-        if (isInvalidKey(tok)) return false;
-        if (/^(DZ-P|A2000|A3000|A4000|B2000|B3000|B4000)/i.test(tok)) return false;
-        if (/^\d+$/.test(tok)) return false;
-        
-        if (/^(ts|cs|sc|sp|p|t|amzn|zzv|xb|pb|cb)[a-z0-9_-]+/i.test(tok)) return true;
-        return /^[a-zA-Z0-9_-]{5,20}$/.test(tok) && /[a-zA-Z]/.test(tok);
-    }
+      if (!accumulatorStore[stationId]) {
+        accumulatorStore[stationId] = { stationId, totalQty: 0, items: [] };
+      }
 
-    function calculateTotals() {
-        let rawText = document.getElementById("inputBox").value;
-        if (!rawText.trim()) {
-            alert("Please paste data into the box first!");
-            return;
-        }
-
-        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
-        
-        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        if (jsonBlocks.length > 0) {
-            jsonBlocks.forEach(block => {
-                try {
-                    let parsed = JSON.parse(block);
-                    processJsonArray(Array.isArray(parsed) ? parsed : [parsed], accumulatedDataGlobal);
-                } catch (e) {}
-            });
-        } else {
-            processTextDirect(sanitizedText, accumulatedDataGlobal);
-        }
-
-        currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
-            let itemData = accumulatedDataGlobal[key];
-            
-            itemData.containers = itemData.containers.filter(c => c.qty > 0 && isToteId(c.containerId));
-
-            let sumTotes = 0;
-            itemData.containers.forEach(c => { sumTotes += c.qty; });
-
-            let finalQty = sumTotes + (itemData.headerQty || 0);
-
-            return { 
-                station: key, 
-                group: getFloorGroup(key),
-                toteCount: itemData.containers.length,
-                qty: finalQty, 
-                containers: itemData.containers 
-            };
-        }).filter(item => item.qty > 0);
-
-        if (currentSortedList.length > 0) {
-            sortData('name', 'asc');
-            document.getElementById("sortControls").style.display = "block";
-            document.getElementById("grandSummary").style.display = "flex";
-            document.getElementById("accumStatus").style.display = "block";
-            document.getElementById("inputBox").value = ""; 
-        } else {
-            alert("No valid DZ-P stations with quantities > 0 were found.");
-        }
-    }
-
-    function processTextDirect(rawText, targetMap) {
-        let lines = rawText.split('\n');
-        let activeStation = null;
-
-        for (let l = 0; l < lines.length; l++) {
-            let lineStr = lines[l].replace(/\u00A0/g, ' ').trim();
-            if (!lineStr) continue;
-
-            let matchStation = lineStr.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
-            if (matchStation) {
-                activeStation = matchStation[1].toUpperCase().trim();
-                if (!targetMap[activeStation]) {
-                    targetMap[activeStation] = { headerQty: 0, containers: [] };
-                }
-            }
-
-            if (!activeStation) continue;
-
-            let cleanedLine = lineStr
-                .replace(/(\d+)\s*(totes?|containers?|stations?)/gi, '')
-                .replace(/page\s*\d+\s*(of\s*\d+)?/gi, '');
-
-            let tokens = cleanedLine.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
-            let lineHasTote = tokens.some(tok => isToteId(tok));
-
-            if (!lineHasTote && matchStation) {
-                let lineWithoutStation = lineStr.replace(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/gi, '');
-                let numMatch = lineWithoutStation.match(/\b(\d+)\b/);
-                if (numMatch) {
-                    let hQty = parseInt(numMatch[1], 10);
-                    if (!isNaN(hQty) && hQty > 0) {
-                        targetMap[activeStation].headerQty += hQty;
-                    }
-                }
-            }
-
-            for (let i = 0; i < tokens.length; i++) {
-                let tok = tokens[i];
-                if (!isToteId(tok)) continue;
-
-                let toteId = tok;
-                let qtyVal = null;
-
-                for (let j = i + 1; j < tokens.length; j++) {
-                    let candidate = parseInt(tokens[j].replace(/[,;]/g, ''), 10);
-                    if (!isNaN(candidate) && candidate >= 0) {
-                        qtyVal = candidate;
-                        break;
-                    }
-                }
-
-                if (qtyVal === null) {
-                    for (let j = i - 1; j >= 0; j--) {
-                        let candidate = parseInt(tokens[j].replace(/[,;]/g, ''), 10);
-                        if (!isNaN(candidate) && candidate >= 0) {
-                            qtyVal = candidate;
-                            break;
-                        }
-                    }
-                }
-
-                if (qtyVal === null && l + 1 < lines.length) {
-                    for (let nl = l + 1; nl < Math.min(l + 3, lines.length); nl++) {
-                        let nextTokens = lines[nl].trim().split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '')).filter(Boolean);
-                        if (nextTokens.length === 0) continue;
-                        
-                        let candidate = parseInt(nextTokens[0], 10);
-                        if (!isNaN(candidate) && candidate >= 0) {
-                            qtyVal = candidate;
-                            break;
-                        }
-                        if (isToteId(nextTokens[0]) || /DZ-P-/i.test(nextTokens[0])) break;
-                    }
-                }
-
-                if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
-                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
-                    if (!existing) {
-                        targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
-                    } else {
-                        existing.qty += qtyVal;
-                    }
-                }
-            }
-        }
-    }
-
-    function extractTopLevelJSONBlocks(text) {
-        let blocks = [], bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
-        for (let i = 0; i < text.length; i++) {
-            let char = text[i];
-            if (char === '"' && text[i - 1] !== '\\') { inString = !inString; continue; }
-            if (!inString) {
-                if (char === '[' || char === '{') {
-                    if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '[') bracketCount++;
-                    if (char === '{') braceCount++;
-                } else if (char === ']' || char === '}') {
-                    if (char === ']') bracketCount--;
-                    if (char === '}') braceCount--;
-                    if (bracketCount === 0 && braceCount === 0 && startIdx !== -1) {
-                        blocks.push(text.substring(startIdx, i + 1));
-                        startIdx = -1;
-                    }
-                }
-            }
-        }
-        return blocks;
-    }
-
-    function processJsonArray(array, targetMap) {
-        array.forEach(item => {
-            let stationRaw = (item.station || item.stationName || item.location || item.name || "").toString();
-            let match = stationRaw.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
-            if (!match) return;
-
-            let station = match[1].toUpperCase().trim();
-            if (!targetMap[station]) targetMap[station] = { headerQty: 0, containers: [] };
-
-            let containerList = item.containers || item.totes || item.scannables;
-            if (Array.isArray(containerList)) {
-                containerList.forEach(c => {
-                    let rawId = (c.containerId || c.scannableId || c.toteId || c.id || "").toString();
-                    let id = rawId.replace(/["':,{} [\]]/g, '').trim();
-                    let q = parseInt(c.qty || c.quantity || c.itemCount || c.count || c.totalItems || 0, 10);
-                    
-                    if (id && q > 0 && isToteId(id)) {
-                        let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
-                        if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty += q;
-                    }
-                });
-            }
+      const containers = item.containers || item.totes || [];
+      if (containers.length > 0) {
+        containers.forEach(c => {
+          const cName = c.toteId || c.scannableId || c.containerId || 'Tote';
+          const cQty = Number(c.qty || c.itemsCount || (c.items ? c.items.length : 0));
+          accumulatorStore[stationId].items.push({ name: cName, count: cQty });
+          accumulatorStore[stationId].totalQty += cQty;
         });
-    }
+      } else {
+        const qty = Number(item.totalQty || item.items || item.count || 0);
+        accumulatorStore[stationId].totalQty += qty;
+      }
+    });
+  }
 
-    function toggleStation(stationName) {
-        if (expandedStations.has(stationName)) expandedStations.delete(stationName);
-        else expandedStations.add(stationName);
-        renderTable();
-    }
+  function processRawText(text) {
+    const lines = text.split('\n');
+    let currentStation = null;
 
-    function sortData(type, direction) {
-        if (currentSortedList.length === 0) return;
-        if (type === 'name') {
-            currentSortedList.sort((a, b) => direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station));
-        } else if (type === 'qty') {
-            currentSortedList.sort((a, b) => direction === 'asc' ? a.qty - b.qty : b.qty - a.qty);
+    lines.forEach(line => {
+      const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
+      if (parts.length === 0) return;
+
+      const firstPart = parts[0];
+      
+      // If line contains station ID pattern (e.g. DZ-P-..., dz-P-..., etc.)
+      if (firstPart.toLowerCase().startsWith('dz-') || firstPart.includes('-BUFFER')) {
+        currentStation = firstPart;
+        const qty = Number(parts[1]) || 0;
+
+        if (!accumulatorStore[currentStation]) {
+          accumulatorStore[currentStation] = { stationId: currentStation, totalQty: 0, items: [] };
         }
-        renderTable();
-    }
+        accumulatorStore[currentStation].totalQty += qty;
+      } 
+      // If line belongs to a tote under current station
+      else if (currentStation && parts.length >= 2) {
+        const toteId = parts[0];
+        const count = Number(parts[1]) || 0;
+        accumulatorStore[currentStation].items.push({ name: toteId, count: count });
+      }
+    });
+  }
 
-    function renderStationRow(tbody, item) {
-        let activeContainers = (item.containers || []).filter(c => c.qty > 0 && isToteId(c.containerId));
-        let hasContainers = activeContainers.length > 0;
-        let isExpanded = expandedStations.has(item.station);
+  function renderGrid(dataArray = null) {
+    const grid = document.getElementById('gridContainer');
+    grid.innerHTML = '';
 
-        let tr = document.createElement("tr");
-        if (hasContainers) {
-            tr.className = "station-row-interactive";
-            tr.onclick = () => toggleStation(item.station);
-        }
+    const list = dataArray || Object.values(accumulatorStore);
 
-        tr.innerHTML = `
-            <td style="font-family: monospace; font-weight: bold;">
-                ${hasContainers ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
-                ${item.station}
-            </td>
-            <td style="color: #0066c0; font-weight: bold; text-align: right;">
-                ${item.qty}
-                <span class="badge">${activeContainers.length} Totes</span>
-            </td>
-        `;
-        tbody.appendChild(tr);
+    list.forEach(station => {
+      const card = document.createElement('div');
+      card.className = 'card';
 
-        if (hasContainers && isExpanded) {
-            let nestedTr = document.createElement("tr");
-            nestedTr.className = "nested-row";
-            let innerHtml = `
-                <td colspan="2">
-                    <div class="nested-container-box">
-                        <strong>📦 Totes Under ${item.station}:</strong>
-                        <table class="inner-data-table">
-                            <thead><tr><th>Tote ID</th><th>Quantity</th></tr></thead>
-                            <tbody>
-            `;
-            activeContainers.forEach(c => {
-                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${c.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${c.containerId}</a>`;
-                innerHtml += `<tr><td>${cellLabel}</td><td>${c.qty} items</td></tr>`;
-            });
-            innerHtml += `</tbody></table></div></td>`;
-            nestedTr.innerHTML = innerHtml;
-            tbody.appendChild(nestedTr);
-        }
-    }
+      // Field details subtext fallback
+      const fieldSub = station.stationId.replace('DZ-P-', '') + ' Fields';
 
-    function renderTable() {
-        let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
-        let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
-        let grandTotal = 0;
-
-        currentSortedList.forEach(item => {
-            let g = item.group;
-            if (!groups[g]) groups[g] = [];
-            groups[g].push(item);
-            groupTotals[g] += item.qty;
-            grandTotal += item.qty;
+      let rowsHtml = '';
+      if (station.items && station.items.length > 0) {
+        station.items.forEach(item => {
+          rowsHtml += `
+            <tr>
+              <td>${item.name}</td>
+              <td class="text-right">${item.count}</td>
+            </tr>`;
         });
+      } else {
+        rowsHtml = `
+          <tr>
+            <td>${station.stationId}</td>
+            <td class="text-right">${station.totalQty}</td>
+          </tr>`;
+      }
 
-        ['A2000', 'A3000', 'A4000'].forEach(g => {
-            let tbody = document.getElementById(`body-${g}`);
-            document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
-            tbody.innerHTML = "";
+      card.innerHTML = `
+        <div class="card-header">
+          <div>
+            <div class="card-title">${station.stationId}</div>
+            <div class="card-subtitle">${fieldSub}</div>
+          </div>
+          <div class="badge-units">${station.totalQty} Units</div>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th>STATION NAME</th>
+                <th class="text-right">COUNT</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
 
-            if (groups[g].length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
-                return;
-            }
+  function sortData(type) {
+    let list = Object.values(accumulatorStore);
+    if (type === 'name-asc') {
+      list.sort((a, b) => a.stationId.localeCompare(b.stationId));
+    } else if (type === 'name-desc') {
+      list.sort((a, b) => b.stationId.localeCompare(a.stationId));
+    } else if (type === 'qty-desc') {
+      list.sort((a, b) => b.totalQty - a.totalQty);
+    } else if (type === 'qty-asc') {
+      list.sort((a, b) => a.totalQty - b.totalQty);
+    }
+    renderGrid(list);
+  }
 
-            let aField = groups[g].filter(i => !/DZ-P-B/i.test(i.station));
-            let bField = groups[g].filter(i => /DZ-P-B/i.test(i.station));
+  function resetAllData() {
+    if (confirm("Are you sure you want to reset all accumulated station data?")) {
+      accumulatorStore = {};
+      renderGrid();
+    }
+  }
 
-            if (aField.length > 0) {
-                let h = document.createElement("tr");
-                h.innerHTML = `<td colspan="2" class="field-subheader">📍 A${g.charAt(1)} STATIONS</td>`;
-                tbody.appendChild(h);
-                aField.forEach(i => renderStationRow(tbody, i));
-            }
-
-            if (bField.length > 0) {
-                let h = document.createElement("tr");
-                h.innerHTML = `<td colspan="2" class="field-subheader">📍 B${g.charAt(1)} STATIONS (BUFFER)</td>`;
-                tbody.appendChild(h);
-                bField.forEach(i => renderStationRow(tbody, i));
-            }
+  function exportToExcel() {
+    let csvContent = "data:text/csv;charset=utf-8,Station ID,Tote/Item ID,Count,Total Station Units\n";
+    Object.values(accumulatorStore).forEach(s => {
+      if (s.items.length > 0) {
+        s.items.forEach(i => {
+          csvContent += `"${s.stationId}","${i.name}",${i.count},${s.totalQty}\n`;
         });
+      } else {
+        csvContent += `"${s.stationId}","N/A",${s.totalQty},${s.totalQty}\n`;
+      }
+    });
 
-        document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
-    }
-
-    function exportToExcel() {
-        if (currentSortedList.length === 0) return alert("Process data before exporting!");
-        let data = currentSortedList.map(i => ({
-            "Group": i.group,
-            "Field": /DZ-P-B/i.test(i.station) ? "B-Field" : "A-Field",
-            "Station Name": i.station,
-            "Tote Count": (i.containers || []).filter(c => c.qty > 0 && isToteId(c.containerId)).length,
-            "Total Quantity": i.qty
-        }));
-        let ws = XLSX.utils.json_to_sheet(data);
-        let wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Summary");
-        XLSX.writeFile(wb, "Station_Summary.xlsx");
-    }
-
-    function clearAll() {
-        accumulatedDataGlobal = {};
-        currentSortedList = [];
-        expandedStations.clear();
-        document.getElementById("inputBox").value = "";
-        ['A2000', 'A3000', 'A4000'].forEach(g => {
-            document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
-            document.getElementById(`badge-${g}`).innerText = "0 Units";
-        });
-        document.getElementById("sortControls").style.display = "none";
-        document.getElementById("grandSummary").style.display = "none";
-        document.getElementById("accumStatus").style.display = "none";
-    }
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "accumulated_stations.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 </script>
+
 </body>
 </html>
