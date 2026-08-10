@@ -135,6 +135,18 @@
             font-size: 0.78rem;
             text-transform: uppercase;
         }
+        
+        /* Section Sub-Header Rows for A/B Separation */
+        .field-subheader {
+            background-color: #eaf2fb;
+            color: #004085;
+            font-weight: bold;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+            border-top: 2px solid #b8daff;
+            border-bottom: 1px solid #b8daff;
+        }
+
         .station-row-interactive { cursor: pointer; }
         .station-row-interactive:hover { background-color: #f0f7fc; }
         .badge {
@@ -186,7 +198,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns (includes both A & B fields).</p>
+    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns with clear visual separation between A and B fields.</p>
     
     <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
     
@@ -210,7 +222,7 @@
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
-                    <span class="floor-subtext">Includes A2 & B2 stations</span>
+                    <span class="floor-subtext">A2 & B2 Fields</span>
                 </div>
                 <span class="floor-total-badge" id="badge-A2000">0 Units</span>
             </div>
@@ -232,7 +244,7 @@
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
-                    <span class="floor-subtext">Includes A3 & B3 stations</span>
+                    <span class="floor-subtext">A3 & B3 Fields</span>
                 </div>
                 <span class="floor-total-badge" id="badge-A3000">0 Units</span>
             </div>
@@ -254,7 +266,7 @@
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
-                    <span class="floor-subtext">Includes A4 & B4 stations</span>
+                    <span class="floor-subtext">A4 & B4 Fields</span>
                 </div>
                 <span class="floor-total-badge" id="badge-A4000">0 Units</span>
             </div>
@@ -283,12 +295,11 @@
     let currentSortedList = [];
     let expandedStations = new Set();
 
-    // Categorizes station into A2000, A3000, or A4000 (handles both A & B prefixes)
     function getFloorGroup(stationName) {
         if (/A2|B2/i.test(stationName)) return "A2000";
         if (/A3|B3/i.test(stationName)) return "A3000";
         if (/A4|B4/i.test(stationName)) return "A4000";
-        return "A2000"; // Fallback default
+        return "A2000";
     }
 
     function calculateTotals() {
@@ -353,7 +364,7 @@
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '[') bracketCount++;
+                    if (char === '['') bracketCount++;
                     if (char === '{') braceCount++;
                 } else if (char === ']' || char === '}') {
                     if (char === ']') bracketCount--;
@@ -451,6 +462,55 @@
         renderTable();
     }
 
+    function renderStationRow(tbody, item) {
+        let hasExtraData = item.containers && item.containers.length > 0;
+        let isExpanded = expandedStations.has(item.station);
+        let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+
+        let tr = document.createElement("tr");
+        if (hasExtraData) {
+            tr.className = "station-row-interactive";
+            tr.onclick = () => toggleStation(item.station);
+        }
+
+        tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: bold;">
+                ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                ${item.station}
+            </td>
+            <td style="color: #0066c0; font-weight: bold; text-align: right;">
+                ${item.qty}
+                ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        if (hasExtraData && isExpanded) {
+            let nestedTr = document.createElement("tr");
+            nestedTr.className = "nested-row";
+
+            let innerHtmlMarkup = `
+                <td colspan="2">
+                    <div class="nested-container-box">
+                        <strong>📦 Totes Under ${item.station}:</strong>
+                        <table class="inner-data-table">
+                            <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
+                            <tbody>
+            `;
+
+            item.containers.forEach(container => {
+                let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
+                let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+
+                innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails}</td></tr>`;
+            });
+
+            innerHtmlMarkup += `</tbody></table></div></td>`;
+            nestedTr.innerHTML = innerHtmlMarkup;
+            tbody.appendChild(nestedTr);
+        }
+    }
+
     function renderTable() {
         let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
         let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
@@ -474,54 +534,29 @@
                 return;
             }
 
-            groups[g].forEach(item => {
-                let hasExtraData = item.containers && item.containers.length > 0;
-                let isExpanded = expandedStations.has(item.station);
-                let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+            // Separate A-field stations from B-field stations inside the column
+            let aFieldItems = groups[g].filter(item => !/DZ-P-B/i.test(item.station));
+            let bFieldItems = groups[g].filter(item => /DZ-P-B/i.test(item.station));
 
-                let tr = document.createElement("tr");
-                if (hasExtraData) {
-                    tr.className = "station-row-interactive";
-                    tr.onclick = () => toggleStation(item.station);
-                }
+            // Render A Field Section
+            if (aFieldItems.length > 0) {
+                let floorNum = g.charAt(1); // Extracts '2', '3', or '4'
+                let headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 A${floorNum} STATIONS</td>`;
+                tbody.appendChild(headerTr);
 
-                tr.innerHTML = `
-                    <td style="font-family: monospace; font-weight: bold;">
-                        ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
-                        ${item.station}
-                    </td>
-                    <td style="color: #0066c0; font-weight: bold; text-align: right;">
-                        ${item.qty}
-                        ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
-                    </td>
-                `;
-                tbody.appendChild(tr);
+                aFieldItems.forEach(item => renderStationRow(tbody, item));
+            }
 
-                if (hasExtraData && isExpanded) {
-                    let nestedTr = document.createElement("tr");
-                    nestedTr.className = "nested-row";
+            // Render B Field Section directly below inside the same column
+            if (bFieldItems.length > 0) {
+                let floorNum = g.charAt(1);
+                let headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 B${floorNum} STATIONS (BUFFER)</td>`;
+                tbody.appendChild(headerTr);
 
-                    let innerHtmlMarkup = `
-                        <td colspan="2">
-                            <div class="nested-container-box">
-                                <strong>📦 Totes Under ${item.station}:</strong>
-                                <table class="inner-data-table">
-                                    <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
-                                    <tbody>
-                    `;
-
-                    item.containers.forEach(container => {
-                        let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
-                        let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
-
-                        innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails}</td></tr>`;
-                    });
-
-                    innerHtmlMarkup += `</tbody></table></div></td>`;
-                    nestedTr.innerHTML = innerHtmlMarkup;
-                    tbody.appendChild(nestedTr);
-                }
-            });
+                bFieldItems.forEach(item => renderStationRow(tbody, item));
+            }
         });
 
         document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
@@ -535,8 +570,10 @@
 
         let excelData = [];
         currentSortedList.forEach(item => {
+            let fieldType = /DZ-P-B/i.test(item.station) ? "B-Field" : "A-Field";
             excelData.push({
                 "Group": item.group,
+                "Field Type": fieldType,
                 "Station Name": item.station,
                 "Totes / Containers": item.toteCount,
                 "Aggregated Unit Count": item.qty
@@ -547,7 +584,7 @@
         let workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
 
-        XLSX.writeFile(workbook, "DZ-P_3Column_Accumulation.xlsx");
+        XLSX.writeFile(workbook, "DZ-P_Separated_Field_Accumulation.xlsx");
     }
 
     function clearAll() {
