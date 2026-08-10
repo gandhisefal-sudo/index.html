@@ -44,7 +44,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs/links.</p>
+    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -55,7 +55,7 @@
     </div>
 
     <div id="accumStatus" class="accum-status">
-        🔄 Multi-Hub Accumulation Active: Data from multiple transhipment hubs is currently merged. Click "Reset All Data" to start fresh.
+        🔄 Multi-Hub Accumulation Active: Data from multiple transhipment hubs is merged seamlessly. Click "Reset All Data" to start fresh.
     </div>
 
     <div id="sortControls" class="sort-section">
@@ -131,15 +131,17 @@
 
         let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
         
-        processTextDirect(sanitizedText, accumulatedDataGlobal);
-
         let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        jsonBlocks.forEach(block => {
-            try {
-                let parsed = JSON.parse(block);
-                processJsonArray(Array.isArray(parsed) ? parsed : [parsed], accumulatedDataGlobal);
-            } catch (e) {}
-        });
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
+                try {
+                    let parsed = JSON.parse(block);
+                    processJsonArray(Array.isArray(parsed) ? parsed : [parsed], accumulatedDataGlobal);
+                } catch (e) {}
+            });
+        } else {
+            processTextDirect(sanitizedText, accumulatedDataGlobal);
+        }
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
@@ -149,7 +151,7 @@
             let sumTotes = 0;
             itemData.containers.forEach(c => { sumTotes += c.qty; });
 
-            let finalQty = sumTotes > 0 ? sumTotes : (itemData.headerQty || 0);
+            let finalQty = sumTotes + (itemData.headerQty || 0);
 
             return { 
                 station: key, 
@@ -185,15 +187,6 @@
                 if (!targetMap[activeStation]) {
                     targetMap[activeStation] = { headerQty: 0, containers: [] };
                 }
-
-                // Check for standalone station header totals across hub reports
-                let headerQtyMatch = lineStr.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)\s*[:\t\- ]*\s*(\d+)/i);
-                if (headerQtyMatch) {
-                    let hQty = parseInt(headerQtyMatch[2], 10);
-                    if (!isNaN(hQty) && hQty > 0) {
-                        targetMap[activeStation].headerQty += hQty;
-                    }
-                }
             }
 
             if (!activeStation) continue;
@@ -203,6 +196,18 @@
                 .replace(/page\s*\d+\s*(of\s*\d+)?/gi, '');
 
             let tokens = cleanedLine.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
+            let lineHasTote = tokens.some(tok => isToteId(tok));
+
+            if (!lineHasTote && matchStation) {
+                let lineWithoutStation = lineStr.replace(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/gi, '');
+                let numMatch = lineWithoutStation.match(/\b(\d+)\b/);
+                if (numMatch) {
+                    let hQty = parseInt(numMatch[1], 10);
+                    if (!isNaN(hQty) && hQty > 0) {
+                        targetMap[activeStation].headerQty += hQty;
+                    }
+                }
+            }
 
             for (let i = 0; i < tokens.length; i++) {
                 let tok = tokens[i];
@@ -248,7 +253,6 @@
                     if (!existing) {
                         targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
                     } else {
-                        // Additive accumulation across different transhipment hubs
                         existing.qty += qtyVal;
                     }
                 }
@@ -298,7 +302,7 @@
                     if (id && q > 0 && isToteId(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty += q; // Additive accumulation across hubs
+                        else existing.qty += q;
                     }
                 });
             }
