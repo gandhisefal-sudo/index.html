@@ -163,93 +163,68 @@
 
     function processTextDirect(rawText, targetMap) {
         let lines = rawText.split('\n');
-        let tokens = [];
+        let activeStation = null;
 
         for (let l = 0; l < lines.length; l++) {
             let lineStr = lines[l].replace(/\u00A0/g, ' ').trim();
             if (!lineStr) continue;
-            let parts = lineStr.split(/\s+/);
-            for (let p of parts) {
-                let cleanPart = p.replace(/["':,{} [\]]/g, '').trim();
-                if (cleanPart) {
-                    tokens.push({ text: cleanPart, rawLine: lineStr, lineIdx: l });
-                }
-            }
-        }
 
-        let activeStation = null;
-
-        for (let i = 0; i < tokens.length; i++) {
-            let tok = tokens[i].text;
-
-            let matchStation = tok.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
-            if (matchStation && (tok.toUpperCase().includes("DZ-P") || tok.toUpperCase().includes("BUFFER"))) {
+            let matchStation = lineStr.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
+            if (matchStation) {
                 activeStation = matchStation[1].toUpperCase().trim();
                 if (!targetMap[activeStation]) {
                     targetMap[activeStation] = { headerQty: 0, containers: [] };
-                }
-                continue;
-            }
-
-            let lineMatch = tokens[i].rawLine.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
-            if (lineMatch && (tokens[i].rawLine.toUpperCase().includes("DZ-P") || tokens[i].rawLine.toUpperCase().includes("BUFFER"))) {
-                let foundSt = lineMatch[1].toUpperCase().trim();
-                if (activeStation !== foundSt) {
-                    activeStation = foundSt;
-                    if (!targetMap[activeStation]) {
-                        targetMap[activeStation] = { headerQty: 0, containers: [] };
-                    }
                 }
             }
 
             if (!activeStation) continue;
 
-            if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
+            // Remove tote badge counts like "73 Totes" or "73 containers" to avoid misreading as unit qty
+            let cleanedLine = lineStr.replace(/(\d+)\s*(totes?|containers?|stations?)/gi, '');
+            let tokens = cleanedLine.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
 
-            let isTote = /^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) ||
-                         (/^[a-zA-Z0-9_-]{6,}$/.test(tok) && /[a-zA-Z]/.test(tok) && /\d/.test(tok));
+            for (let i = 0; i < tokens.length; i++) {
+                let tok = tokens[i];
+                if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
 
-            if (isTote) {
-                let toteId = tok;
-                let qtyVal = null;
+                let isTote = /^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) ||
+                             (/^[a-zA-Z0-9_-]{5,}$/.test(tok) && /[a-zA-Z]/.test(tok) && !tok.toUpperCase().includes("DZ-P"));
 
-                let sameLineTokens = tokens.filter(t => t.lineIdx === tokens[i].lineIdx);
-                let sameLineNumbers = sameLineTokens
-                    .map(t => parseInt(t.text.replace(/[,;]/g, ''), 10))
-                    .filter(n => !isNaN(n));
+                if (isTote) {
+                    let toteId = tok;
+                    let qtyVal = null;
 
-                let explicitMatch = tokens[i].rawLine.match(/(\d+)\s*items?/i);
-                if (explicitMatch) {
-                    qtyVal = parseInt(explicitMatch[1], 10);
-                } else if (sameLineNumbers.length > 0) {
-                    let tokIdxInLine = sameLineTokens.findIndex(t => t.text === tok);
-                    let numbersAfter = sameLineTokens.slice(tokIdxInLine + 1)
-                        .map(t => parseInt(t.text.replace(/[,;]/g, ''), 10))
-                        .filter(n => !isNaN(n));
-
-                    if (numbersAfter.length > 0) {
-                        qtyVal = numbersAfter[0];
+                    // 1. Check for explicit item format on same line (e.g. "34 items")
+                    let explicitMatch = cleanedLine.match(/(\d+)\s*items?/i);
+                    if (explicitMatch) {
+                        qtyVal = parseInt(explicitMatch[1], 10);
                     } else {
-                        qtyVal = sameLineNumbers[sameLineNumbers.length - 1];
-                    }
-                }
-
-                if (qtyVal === null || isNaN(qtyVal)) {
-                    for (let j = i + 1; j < Math.min(i + 6, tokens.length); j++) {
-                        let nextTok = tokens[j].text.replace(/[,;]/g, '');
-                        if (/^\d+$/.test(nextTok)) {
-                            qtyVal = parseInt(nextTok, 10);
-                            break;
+                        // 2. Extract remaining numbers on the same line
+                        let sameLineNums = tokens
+                            .map(t => parseInt(t.replace(/[,;]/g, ''), 10))
+                            .filter(n => !isNaN(n));
+                        
+                        if (sameLineNums.length > 0) {
+                            qtyVal = sameLineNums[sameLineNums.length - 1];
                         }
                     }
-                }
 
-                if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
-                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
-                    if (!existing) {
-                        targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
-                    } else {
-                        existing.qty = Math.max(existing.qty, qtyVal);
+                    // 3. Look at immediate next line only if it is formatted as a single number (e.g. "34")
+                    if ((qtyVal === null || isNaN(qtyVal)) && l + 1 < lines.length) {
+                        let nextLine = lines[l + 1].trim();
+                        let nextMatch = nextLine.match(/^(\d+)\s*(items?)?$/i);
+                        if (nextMatch) {
+                            qtyVal = parseInt(nextMatch[1], 10);
+                        }
+                    }
+
+                    if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
+                        let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
+                        if (!existing) {
+                            targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
+                        } else {
+                            existing.qty = qtyVal;
+                        }
                     }
                 }
             }
@@ -298,7 +273,7 @@
                     if (id && q > 0 && !isInvalidKey(id) && /^[a-zA-Z0-9_\-]+$/.test(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty = Math.max(existing.qty, q);
+                        else existing.qty = q;
                     }
                 });
             }
