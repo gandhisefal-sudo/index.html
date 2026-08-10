@@ -84,7 +84,7 @@
   <div class="header-title">📊 Unified 3-Column Accumulator</div>
   <div class="header-subtext">Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs/links.</div>
 
-  <textarea id="inputData" placeholder="Paste data here..."></textarea>
+  <textarea id="inputData" placeholder="Paste web table or station data here..."></textarea>
 
   <div class="btn-group">
     <button class="btn btn-accumulate" onclick="accumulateData()">➕ Accumulate Data</button>
@@ -111,13 +111,16 @@
 
   function accumulateData() {
     const rawInput = document.getElementById('inputData').value.trim();
-    if (!rawInput) return;
+    if (!rawInput) {
+      alert("Please paste data into the text box first.");
+      return;
+    }
 
     try {
       if (rawInput.startsWith('{') || rawInput.startsWith('[')) {
         processJSON(JSON.parse(rawInput));
       } else {
-        processPastedTable(rawInput);
+        processRawText(rawInput);
       }
       
       document.getElementById('inputData').value = '';
@@ -127,53 +130,50 @@
     }
   }
 
-  function processPastedTable(text) {
+  function processRawText(text) {
     const lines = text.split(/\r?\n/);
     let currentStation = null;
+    let addedCount = 0;
 
     lines.forEach(line => {
       const trimmed = line.trim();
       if (!trimmed) return;
 
-      // Extract tokens separated by tabs, multiple spaces, or commas
-      const tokens = trimmed.split(/[\t,]+|\s{2,}/).map(t => t.trim()).filter(Boolean);
-      
-      const firstToken = tokens[0] || '';
-      
-      // Check if line represents a Station ID (e.g., DZ-P-B3220, dz-P-B3220-BUFFER)
-      if (firstToken.toLowerCase().startsWith('dz-') || firstToken.includes('-BUFFER') || tokens.includes('DROP_ZONE_PRIME')) {
-        currentStation = firstToken.toUpperCase();
-        
+      // 1. Detect Station ID (e.g., dz-P-B3220, DZ-P-B3220-BUFFER)
+      const stationMatch = trimmed.match(/\b(dz-[a-z0-9-]+)\b/i);
+      if (stationMatch) {
+        currentStation = stationMatch[1].toUpperCase();
         if (!accumulatorStore[currentStation]) {
           accumulatorStore[currentStation] = { stationId: currentStation, totalQty: 0, totes: {} };
         }
-      } 
-      // Check if line represents a Tote (e.g., tsX1gp16by9, TRANSFER_TOTE)
-      else if (currentStation) {
-        let toteId = firstToken;
-        let qty = 0;
+        addedCount++;
+        return;
+      }
 
-        // Find the numeric quantity in the row tokens
-        for (let i = 1; i < tokens.length; i++) {
-          const num = parseInt(tokens[i], 10);
-          if (!isNaN(num)) {
-            qty = num;
-            break;
-          }
-        }
+      // 2. Detect Tote ID (e.g., tsX1gp16by9) under current active station
+      if (currentStation) {
+        const toteMatch = trimmed.match(/\b(ts[a-z0-9]+)\b/i);
+        if (toteMatch) {
+          const toteId = toteMatch[1];
+          
+          // Extract first numeric value in line (the item count)
+          const numbers = trimmed.match(/\b(\d+)\b/g);
+          const qty = numbers ? parseInt(numbers[0], 10) : 0;
 
-        // Ignore individual ASIN/Sellable rows if tote is already captured
-        const isTote = toteId.toLowerCase().startsWith('ts') || tokens.includes('TRANSFER_TOTE');
-        
-        if (isTote) {
           if (!accumulatorStore[currentStation].totes[toteId]) {
             accumulatorStore[currentStation].totes[toteId] = 0;
           }
+          
           accumulatorStore[currentStation].totes[toteId] += qty;
           accumulatorStore[currentStation].totalQty += qty;
+          addedCount++;
         }
       }
     });
+
+    if (addedCount === 0) {
+      alert("No valid station (DZ-...) or tote (ts...) IDs detected in the pasted text.");
+    }
   }
 
   function processJSON(data) {
