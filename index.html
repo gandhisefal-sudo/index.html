@@ -1,299 +1,567 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unified 3-Column Accumulator</title>
-  <style>
-    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: #f8f9fa; padding: 25px; margin: 0; color: #333; }
-    
-    .header-title { font-size: 24px; font-weight: 700; color: #0056b3; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .header-subtext { color: #555; font-size: 14px; margin-bottom: 15px; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3-Column Station Quantity Accumulator</title>
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .container {
+            max-width: 1450px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #0066c0;
+            margin-top: 0;
+            border-bottom: 2px solid #e7e9ec;
+            padding-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 130px;
+            padding: 12px;
+            border: 1px solid #a6a6a6;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            background-color: #fafafa;
+        }
+        .btn-group {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-process { background-color: #2cba00; color: white; }
+        .btn-process:hover { background-color: #249700; }
+        .btn-excel { background-color: #107c41; color: white; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-clear { background-color: #a6a6a6; color: white; }
+        .btn-clear:hover { background-color: #8c8c8c; }
+        .sort-section {
+            margin-top: 18px;
+            background: #f7f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #e7e9ec;
+            display: none;
+        }
+        .sort-btn {
+            background: #fff;
+            border: 1px solid #a6a6a6;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            color: #333;
+            border-radius: 4px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .sort-btn:hover { background: #eef2f5; }
 
-    textarea {
-      width: 100%; height: 140px; border: 1px solid #ccc; border-radius: 4px;
-      padding: 12px; font-size: 14px; resize: vertical; outline: none; margin-bottom: 15px;
-    }
-    textarea:focus { border-color: #0056b3; box-shadow: 0 0 0 2px rgba(0,86,179,0.2); }
+        /* 3-Column Level Grid Layout */
+        .floors-container {
+            display: flex;
+            gap: 18px;
+            margin-top: 20px;
+            align-items: flex-start;
+        }
+        .floor-column {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #dcdfe4;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+        .floor-header {
+            background-color: #0066c0;
+            color: #ffffff;
+            padding: 12px 15px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .floor-subtext {
+            font-size: 0.75rem;
+            font-weight: normal;
+            opacity: 0.85;
+            display: block;
+        }
+        .floor-total-badge {
+            background: rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
 
-    .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
-    .btn {
-      border: none; padding: 10px 18px; border-radius: 4px; font-weight: 600;
-      font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 6px; color: #fff;
-    }
-    .btn-accumulate { background-color: #28a745; }
-    .btn-accumulate:hover { background-color: #218838; }
-    .btn-export { background-color: #1e7e34; }
-    .btn-export:hover { background-color: #196f2e; }
-    .btn-reset { background-color: #dc3545; }
-    .btn-reset:hover { background-color: #c82333; }
-
-    .info-banner {
-      background-color: #e7f1ff; border-left: 4px solid #0d6efd; color: #084298;
-      padding: 12px 16px; border-radius: 4px; font-size: 13.5px; font-weight: 500;
-      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
-    }
-
-    .sort-container {
-      background-color: #f1f3f5; border: 1px solid #e9ecef; border-radius: 6px;
-      padding: 8px 15px; display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
-    }
-    .sort-label { font-weight: 700; font-size: 13px; color: #495057; }
-    .btn-sort {
-      background: #fff; border: 1px solid #ced4da; padding: 5px 12px;
-      border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 600; color: #333;
-    }
-    .btn-sort:hover { background-color: #e2e6ea; }
-
-    .grid-container {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
-    }
-    @media (max-width: 992px) { .grid-container { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } }
-
-    .card {
-      background: #fff; border-radius: 6px; overflow: hidden;
-      border: 1px solid #dedede; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .card-header {
-      background-color: #0066cc; color: #fff; padding: 12px 16px;
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .card-title { font-size: 16px; font-weight: 700; }
-    .card-subtitle { font-size: 11px; opacity: 0.85; margin-top: 2px; }
-    .badge-units {
-      background-color: rgba(255, 255, 255, 0.25); color: #fff;
-      padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: 700;
-    }
-
-    .card-body { padding: 0; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th {
-      background-color: #f8f9fa; color: #6c757d; font-size: 11px;
-      font-weight: 700; text-transform: uppercase; padding: 10px 16px;
-      border-bottom: 1px solid #dee2e6;
-    }
-    td { padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #f1f3f5; color: #333; }
-    tr:last-child td { border-bottom: none; }
-    .text-right { text-align: right; }
-  </style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e7e9ec;
+            font-size: 0.88rem;
+        }
+        th {
+            background-color: #f7f9fa;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+        }
+        .station-row-interactive { cursor: pointer; }
+        .station-row-interactive:hover { background-color: #f0f7fc; }
+        .badge {
+            background-color: #e1f0fc;
+            color: #0066c0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+        .nested-row { background-color: #fcfdfe; }
+        .nested-container-box {
+            padding: 10px;
+            border-left: 3px solid #0066c0;
+            background: #f7fafd;
+            margin: 4px 0;
+            font-size: 0.8rem;
+        }
+        .inner-data-table {
+            width: 100%;
+            margin-top: 5px;
+            background: transparent;
+        }
+        .inner-data-table th { background: #edf4fa; padding: 6px; }
+        .inner-data-table td { padding: 6px; background: #fff; }
+        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
+        .tote-link:hover { text-decoration: underline; }
+        .no-data-msg {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+        .grand-summary-bar {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2c3e50;
+            color: white;
+            border-radius: 6px;
+            display: none;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="header-title">📊 Unified 3-Column Accumulator</div>
-  <div class="header-subtext">Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs/links.</div>
+<div class="container">
+    <h2>📊 Unified 3-Column Accumulator</h2>
+    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns (includes both A & B fields).</p>
+    
+    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
+    
+    <div class="btn-group">
+        <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
+        <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
+        <button class="btn-clear" onclick="clearAll()">Reset</button>
+    </div>
 
-  <textarea id="inputData" placeholder="Paste web table or station data here..."></textarea>
+    <div id="sortControls" class="sort-section">
+        <strong>Sort Tables:</strong>
+        <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
+        <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'asc')">Quantity (Low-High)</button>
+    </div>
 
-  <div class="btn-group">
-    <button class="btn btn-accumulate" onclick="accumulateData()">➕ Accumulate Data</button>
-    <button class="btn btn-export" onclick="exportToExcel()">🏢 Export to Excel</button>
-    <button class="btn btn-reset" onclick="resetAllData()">🗑️ Reset All Data</button>
-  </div>
+    <div class="floors-container">
+        <!-- DZ-P-A2000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A2000
+                    <span class="floor-subtext">Includes A2 & B2 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A2000">
+                    <tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-  <div class="info-banner">
-    🔄 <b>Multi-Hub Accumulation Active:</b> Data from multiple transhipment hubs is currently merged. Click "Reset All Data" to start fresh.
-  </div>
+        <!-- DZ-P-A3000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A3000
+                    <span class="floor-subtext">Includes A3 & B3 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A3000">
+                    <tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-  <div class="sort-container">
-    <span class="sort-label">Sort Tables:</span>
-    <button class="btn-sort" onclick="sortData('name-asc')">Station (A-Z)</button>
-    <button class="btn-sort" onclick="sortData('name-desc')">Station (Z-A)</button>
-    <button class="btn-sort" onclick="sortData('qty-desc')">Quantity (High-Low)</button>
-    <button class="btn-sort" onclick="sortData('qty-asc')">Quantity (Low-High)</button>
-  </div>
+        <!-- DZ-P-A4000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A4000
+                    <span class="floor-subtext">Includes A4 & B4 stations</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A4000">
+                    <tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-  <div class="grid-container" id="gridContainer"></div>
+    <div id="grandSummary" class="grand-summary-bar">
+        <span>GRAND TOTAL ALL COLUMNS:</span>
+        <span id="grandTotalUnits">0 Units</span>
+    </div>
+</div>
 
 <script>
-  let accumulatorStore = {};
+    let accumulatedDataGlobal = {};
+    let currentSortedList = [];
+    let expandedStations = new Set();
 
-  function accumulateData() {
-    const rawInput = document.getElementById('inputData').value.trim();
-    if (!rawInput) {
-      alert("Please paste data into the text box first.");
-      return;
+    // Categorizes station into A2000, A3000, or A4000 (handles both A & B prefixes)
+    function getFloorGroup(stationName) {
+        if (/A2|B2/i.test(stationName)) return "A2000";
+        if (/A3|B3/i.test(stationName)) return "A3000";
+        if (/A4|B4/i.test(stationName)) return "A4000";
+        return "A2000"; // Fallback default
     }
 
-    try {
-      if (rawInput.startsWith('{') || rawInput.startsWith('[')) {
-        processJSON(JSON.parse(rawInput));
-      } else {
-        processRawText(rawInput);
-      }
-      
-      document.getElementById('inputData').value = '';
-      renderGrid();
-    } catch (e) {
-      alert("Parsing Error: " + e.message);
-    }
-  }
-
-  function processRawText(text) {
-    const lines = text.split(/\r?\n/);
-    let currentStation = null;
-    let addedCount = 0;
-
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-
-      // 1. Detect Station ID (e.g., dz-P-B3220, DZ-P-B3220-BUFFER)
-      const stationMatch = trimmed.match(/\b(dz-[a-z0-9-]+)\b/i);
-      if (stationMatch) {
-        currentStation = stationMatch[1].toUpperCase();
-        if (!accumulatorStore[currentStation]) {
-          accumulatorStore[currentStation] = { stationId: currentStation, totalQty: 0, totes: {} };
+    function calculateTotals() {
+        let rawText = document.getElementById("inputBox").value;
+        if (!rawText.trim()) {
+            alert("Please paste data into the box first!");
+            return;
         }
-        addedCount++;
-        return;
-      }
 
-      // 2. Detect Tote ID (e.g., tsX1gp16by9) under current active station
-      if (currentStation) {
-        const toteMatch = trimmed.match(/\b(ts[a-z0-9]+)\b/i);
-        if (toteMatch) {
-          const toteId = toteMatch[1];
-          
-          // Extract first numeric value in line (the item count)
-          const numbers = trimmed.match(/\b(\d+)\b/g);
-          const qty = numbers ? parseInt(numbers[0], 10) : 0;
+        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        let parsedSuccessfully = false;
 
-          if (!accumulatorStore[currentStation].totes[toteId]) {
-            accumulatorStore[currentStation].totes[toteId] = 0;
-          }
-          
-          accumulatorStore[currentStation].totes[toteId] += qty;
-          accumulatorStore[currentStation].totalQty += qty;
-          addedCount++;
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
+                try {
+                    let parsedJson = JSON.parse(block);
+                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+                    processJsonArray(normalizedArray, accumulatedDataGlobal);
+                    parsedSuccessfully = true;
+                } catch (e) {
+                    console.error("JSON parse error", e);
+                }
+            });
         }
-      }
-    });
 
-    if (addedCount === 0) {
-      alert("No valid station (DZ-...) or tote (ts...) IDs detected in the pasted text.");
-    }
-  }
-
-  function processJSON(data) {
-    const items = Array.isArray(data) ? data.flat(Infinity) : [data];
-    items.forEach(item => {
-      const stationId = (item.stationId || item.scannableId || item['Scannable ID'] || '').trim().toUpperCase();
-      if (!stationId) return;
-
-      if (!accumulatorStore[stationId]) {
-        accumulatorStore[stationId] = { stationId, totalQty: 0, totes: {} };
-      }
-
-      const containers = item.containers || item.totes || [];
-      containers.forEach(c => {
-        const toteId = c.toteId || c.scannableId || c.containerId || 'TOTE';
-        const qty = Number(c.qty || c.itemsCount || (c.items ? c.items.length : 0)) || 0;
-        
-        if (!accumulatorStore[stationId].totes[toteId]) {
-          accumulatorStore[stationId].totes[toteId] = 0;
+        if (!parsedSuccessfully) {
+            processTextFallback(sanitizedText, accumulatedDataGlobal);
         }
-        accumulatorStore[stationId].totes[toteId] += qty;
-        accumulatorStore[stationId].totalQty += qty;
-      });
-    });
-  }
 
-  function renderGrid(dataArray = null) {
-    const grid = document.getElementById('gridContainer');
-    grid.innerHTML = '';
+        currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
+            let itemData = accumulatedDataGlobal[key];
+            let finalStationQty = 0;
+            itemData.containers.forEach(c => { finalStationQty += c.qty; });
 
-    const list = dataArray || Object.values(accumulatorStore);
-
-    list.forEach(station => {
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      const fieldSub = station.stationId.replace('DZ-P-', '') + ' Fields';
-
-      let rowsHtml = '';
-      const toteKeys = Object.keys(station.totes);
-
-      if (toteKeys.length > 0) {
-        toteKeys.forEach(toteId => {
-          rowsHtml += `
-            <tr>
-              <td>${toteId}</td>
-              <td class="text-right">${station.totes[toteId]}</td>
-            </tr>`;
+            return { 
+                station: key, 
+                group: getFloorGroup(key),
+                toteCount: itemData.containers.length,
+                qty: finalStationQty, 
+                containers: itemData.containers 
+            };
         });
-      } else {
-        rowsHtml = `
-          <tr>
-            <td>${station.stationId}</td>
-            <td class="text-right">${station.totalQty}</td>
-          </tr>`;
-      }
 
-      card.innerHTML = `
-        <div class="card-header">
-          <div>
-            <div class="card-title">${station.stationId}</div>
-            <div class="card-subtitle">${fieldSub}</div>
-          </div>
-          <div class="badge-units">${station.totalQty} Units</div>
-        </div>
-        <div class="card-body">
-          <table>
-            <thead>
-              <tr>
-                <th>STATION / TOTE NAME</th>
-                <th class="text-right">COUNT</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-        </div>
-      `;
-      grid.appendChild(card);
-    });
-  }
-
-  function sortData(type) {
-    let list = Object.values(accumulatorStore);
-    if (type === 'name-asc') list.sort((a, b) => a.stationId.localeCompare(b.stationId));
-    if (type === 'name-desc') list.sort((a, b) => b.stationId.localeCompare(a.stationId));
-    if (type === 'qty-desc') list.sort((a, b) => b.totalQty - a.totalQty);
-    if (type === 'qty-asc') list.sort((a, b) => a.totalQty - b.totalQty);
-    renderGrid(list);
-  }
-
-  function resetAllData() {
-    if (confirm("Reset all accumulated station data?")) {
-      accumulatorStore = {};
-      renderGrid();
+        if (currentSortedList.length > 0) {
+            sortData('name', 'asc');
+            document.getElementById("sortControls").style.display = "block";
+            document.getElementById("grandSummary").style.display = "flex";
+            document.getElementById("inputBox").value = ""; 
+        } else {
+            alert("No valid DZ-P or BUFFER data rows were identified.");
+        }
     }
-  }
 
-  function exportToExcel() {
-    let csvContent = "data:text/csv;charset=utf-8,Station ID,Tote ID,Count,Total Station Units\n";
-    Object.values(accumulatorStore).forEach(s => {
-      const toteKeys = Object.keys(s.totes);
-      if (toteKeys.length > 0) {
-        toteKeys.forEach(toteId => {
-          csvContent += `"${s.stationId}","${toteId}",${s.totes[toteId]},${s.totalQty}\n`;
+    function extractTopLevelJSONBlocks(text) {
+        let blocks = [];
+        let bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
+
+        for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            if (char === '"' && text[i - 1] !== '\\') { inString = !inString; continue; }
+            if (!inString) {
+                if (char === '[' || char === '{') {
+                    if (bracketCount === 0 && braceCount === 0) startIdx = i;
+                    if (char === '[') bracketCount++;
+                    if (char === '{') braceCount++;
+                } else if (char === ']' || char === '}') {
+                    if (char === ']') bracketCount--;
+                    if (char === '}') braceCount--;
+                    if (bracketCount === 0 && braceCount === 0 && startIdx !== -1) {
+                        blocks.push(text.substring(startIdx, i + 1));
+                        startIdx = -1;
+                    }
+                }
+            }
+        }
+        return blocks;
+    }
+
+    function processJsonArray(array, targetMap) {
+        array.forEach(item => {
+            let station = item.station?.toUpperCase().trim();
+            if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+            
+            if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
+            
+            if (item.containers && Array.isArray(item.containers)) {
+                item.containers.forEach(newContainer => {
+                    let containerIdClean = newContainer.containerId?.trim();
+                    if (!containerIdClean) return;
+
+                    let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
+                    
+                    if (!existingContainer) {
+                        let containerCopy = {
+                            containerId: containerIdClean,
+                            qty: parseInt(newContainer.qty, 10) || 0,
+                            items: []
+                        };
+                        if (newContainer.items && Array.isArray(newContainer.items)) {
+                            newContainer.items.forEach(it => {
+                                containerCopy.items.push({ sku: it.sku, qty: parseInt(it.qty, 10) || 0 });
+                            });
+                        }
+                        targetMap[station].containers.push(containerCopy);
+                    } else if (newContainer.items && Array.isArray(newContainer.items)) {
+                        newContainer.items.forEach(newSkuItem => {
+                            let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
+                            let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                            if (!existingSku) {
+                                existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                existingContainer.qty += incomingSkuQty;
+                            }
+                        });
+                    }
+                });
+            }
         });
-      } else {
-        csvContent += `"${s.stationId}","N/A",${s.totalQty},${s.totalQty}\n`;
-      }
-    });
+    }
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "accumulated_stations.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
+    function processTextFallback(rawText, targetMap) {
+        let lines = rawText.split('\n');
+        lines.forEach(line => {
+            if (!line.trim()) return;
+            let parts = line.split(/\t+/);
+            if (parts.length < 2) parts = line.split(/\s{2,}/); 
+            
+            if (parts.length >= 2) {
+                let station = parts[0].trim().toUpperCase();
+                if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+
+                let qty = parseInt(parts[1].trim(), 10) || 0;
+                if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
+                
+                let fallbackToteId = "MANUAL-PASTE-TOTAL";
+                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
+                
+                if (!existingContainer) {
+                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
+                } else if (existingContainer.qty !== qty) {
+                    existingContainer.qty += qty;
+                }
+            }
+        });
+    }
+
+    function toggleStation(stationName) {
+        if (expandedStations.has(stationName)) expandedStations.delete(stationName);
+        else expandedStations.add(stationName);
+        renderTable();
+    }
+
+    function sortData(type, direction) {
+        if (currentSortedList.length === 0) return;
+        if (type === 'name') {
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station));
+        } else if (type === 'qty') {
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.qty - b.qty : b.qty - a.qty);
+        }
+        renderTable();
+    }
+
+    function renderTable() {
+        let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
+        let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
+        let grandTotal = 0;
+
+        currentSortedList.forEach(item => {
+            let g = item.group;
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(item);
+            groupTotals[g] += item.qty;
+            grandTotal += item.qty;
+        });
+
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            let tbody = document.getElementById(`body-${g}`);
+            document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
+            tbody.innerHTML = "";
+
+            if (groups[g].length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+                return;
+            }
+
+            groups[g].forEach(item => {
+                let hasExtraData = item.containers && item.containers.length > 0;
+                let isExpanded = expandedStations.has(item.station);
+                let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+
+                let tr = document.createElement("tr");
+                if (hasExtraData) {
+                    tr.className = "station-row-interactive";
+                    tr.onclick = () => toggleStation(item.station);
+                }
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; font-weight: bold;">
+                        ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                        ${item.station}
+                    </td>
+                    <td style="color: #0066c0; font-weight: bold; text-align: right;">
+                        ${item.qty}
+                        ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                if (hasExtraData && isExpanded) {
+                    let nestedTr = document.createElement("tr");
+                    nestedTr.className = "nested-row";
+
+                    let innerHtmlMarkup = `
+                        <td colspan="2">
+                            <div class="nested-container-box">
+                                <strong>📦 Totes Under ${item.station}:</strong>
+                                <table class="inner-data-table">
+                                    <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
+                                    <tbody>
+                    `;
+
+                    item.containers.forEach(container => {
+                        let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
+                        let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+
+                        innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails}</td></tr>`;
+                    });
+
+                    innerHtmlMarkup += `</tbody></table></div></td>`;
+                    nestedTr.innerHTML = innerHtmlMarkup;
+                    tbody.appendChild(nestedTr);
+                }
+            });
+        });
+
+        document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
+    }
+
+    function exportToExcel() {
+        if (currentSortedList.length === 0) {
+            alert("Please process some data first before exporting!");
+            return;
+        }
+
+        let excelData = [];
+        currentSortedList.forEach(item => {
+            excelData.push({
+                "Group": item.group,
+                "Station Name": item.station,
+                "Totes / Containers": item.toteCount,
+                "Aggregated Unit Count": item.qty
+            });
+        });
+
+        let worksheet = XLSX.utils.json_to_sheet(excelData);
+        let workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
+
+        XLSX.writeFile(workbook, "DZ-P_3Column_Accumulation.xlsx");
+    }
+
+    function clearAll() {
+        accumulatedDataGlobal = {};
+        currentSortedList = [];
+        expandedStations.clear();
+        document.getElementById("inputBox").value = "";
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+            document.getElementById(`badge-${g}`).innerText = "0 Units";
+        });
+        document.getElementById("sortControls").style.display = "none";
+        document.getElementById("grandSummary").style.display = "none";
+    }
 </script>
 
 </body>
