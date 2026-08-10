@@ -1,8 +1,12 @@
 <script>
-  // Global accumulator to persist data across multiple tab pastes
-  let masterInventory = {};
+  // Load saved data from localStorage on page load, or start with an empty object
+  let masterInventory = JSON.parse(localStorage.getItem('fc_master_inventory')) || {};
 
-  // Process data when clicking the button or pasting
+  // Render saved data automatically as soon as the page loads/refreshes
+  document.addEventListener('DOMContentLoaded', () => {
+    renderTables();
+  });
+
   function processData() {
     const rawText = document.getElementById('input-data').value;
     if (!rawText.trim()) return;
@@ -10,17 +14,14 @@
     const lines = rawText.trim().split('\n');
 
     lines.forEach(line => {
-      // Split tab-separated or multi-space separated columns from web table paste
       const cols = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
       
       if (cols.length >= 2) {
         const station = cols[0];
         const count = parseInt(cols[1], 10);
 
-        // Ignore headers or non-numeric rows
         if (!station || isNaN(count) || station.toLowerCase().includes('scannable id')) return;
 
-        // ACCUMULATE: Sum up values if station exists, else initialize
         if (masterInventory[station]) {
           masterInventory[station] += count;
         } else {
@@ -29,85 +30,16 @@
       }
     });
 
-    // Clear input field for the next tab's paste
-    document.getElementById('input-data').value = '';
+    // Save updated state to localStorage
+    localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
 
-    // Re-render UI columns
+    document.getElementById('input-data').value = '';
     renderTables();
   }
 
-  // Detect floor level based on station name patterns (A2/B2/P2, A3/B3/P3, A4/B4/P4)
-  function getFloorGroup(station) {
-    if (/[\-_]?[ABpP]3|P3/i.test(station)) return 'A3000';
-    if (/[\-_]?[ABpP]4|P4/i.test(station)) return 'A4000';
-    return 'A2000'; // Default fallback
-  }
-
-  // Detect Field A vs Field B / Buffer
-  function isFieldA(station) {
-    return /[\-_]A\d+/i.test(station) || station.includes('md-A');
-  }
-
-  // Render processed totals into the 3 columns
-  function renderTables() {
-    const floors = {
-      'A2000': { a: [], b: [], total: 0 },
-      'A3000': { a: [], b: [], total: 0 },
-      'A4000': { a: [], b: [], total: 0 }
-    };
-
-    // Sort stored items into floors and fields
-    Object.keys(masterInventory).forEach(station => {
-      const count = masterInventory[station];
-      const floorKey = getFloorGroup(station);
-      
-      floors[floorKey].total += count;
-
-      if (isFieldA(station)) {
-        floors[floorKey].a.push({ station, count });
-      } else {
-        floors[floorKey].b.push({ station, count });
-      }
-    });
-
-    // Render each floor column
-    ['A2000', 'A3000', 'A4000'].forEach(floorKey => {
-      const container = document.getElementById(`table-${floorKey.toLowerCase()}`);
-      const badge = document.getElementById(`badge-${floorKey.toLowerCase()}`);
-      const data = floors[floorKey];
-
-      badge.innerText = `${data.total.toLocaleString()} Units`;
-
-      if (data.a.length === 0 && data.b.length === 0) {
-        container.innerHTML = `<div class="empty-msg">No ${floorKey} data</div>`;
-        return;
-      }
-
-      let html = '<table class="data-table">';
-      
-      // Render A-Field Section
-      if (data.a.length > 0) {
-        html += `<tr class="section-header"><td colspan="2">A-FIELD STATIONS</td></tr>`;
-        data.a.sort((x, y) => x.station.localeCompare(y.station)).forEach(row => {
-          html += `<tr><td>${row.station}</td><td class="count-col">${row.count}</td></tr>`;
-        });
-      }
-
-      // Render B-Field / Buffer Section
-      if (data.b.length > 0) {
-        html += `<tr class="section-header buffer-header"><td colspan="2">B-FIELD / BUFFER STATIONS</td></tr>`;
-        data.b.sort((x, y) => x.station.localeCompare(y.station)).forEach(row => {
-          html += `<tr><td>${row.station}</td><td class="count-col">${row.count}</td></tr>`;
-        });
-      }
-
-      html += '</table>';
-      container.innerHTML = html;
-    });
-  }
-
-  // Reset button action
   function resetCalculator() {
+    // Clear both memory and browser storage
+    localStorage.removeItem('fc_master_inventory');
     masterInventory = {};
     document.getElementById('input-data').value = '';
     renderTables();
