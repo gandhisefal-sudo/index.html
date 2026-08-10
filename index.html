@@ -12,7 +12,7 @@
     .header-subtext { color: #555; font-size: 14px; margin-bottom: 15px; }
 
     textarea {
-      width: 100%; height: 130px; border: 1px solid #ccc; border-radius: 4px;
+      width: 100%; height: 140px; border: 1px solid #ccc; border-radius: 4px;
       padding: 12px; font-size: 14px; resize: vertical; outline: none; margin-bottom: 15px;
     }
     textarea:focus { border-color: #0056b3; box-shadow: 0 0 0 2px rgba(0,86,179,0.2); }
@@ -46,7 +46,6 @@
     }
     .btn-sort:hover { background-color: #e2e6ea; }
 
-    /* 3-Column Card Grid Layout */
     .grid-container {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
     }
@@ -105,12 +104,9 @@
     <button class="btn-sort" onclick="sortData('qty-asc')">Quantity (Low-High)</button>
   </div>
 
-  <div class="grid-container" id="gridContainer">
-    <!-- Accumulated Station Cards Render Here -->
-  </div>
+  <div class="grid-container" id="gridContainer"></div>
 
 <script>
-  // In-memory store for accumulated stations across multiple pastes
   let accumulatorStore = {};
 
   function accumulateData() {
@@ -118,72 +114,89 @@
     if (!rawInput) return;
 
     try {
-      // 1. Check if input is JSON format
       if (rawInput.startsWith('{') || rawInput.startsWith('[')) {
-        const parsed = JSON.parse(rawInput);
-        processParsedData(Array.isArray(parsed) ? parsed : [parsed]);
+        processJSON(JSON.parse(rawInput));
       } else {
-        // 2. Parse raw web table paste (Tab-separated or space-separated)
-        processRawText(rawInput);
+        processPastedTable(rawInput);
       }
       
       document.getElementById('inputData').value = '';
       renderGrid();
     } catch (e) {
-      alert("Error processing input. Please check the pasted format.");
+      alert("Parsing Error: " + e.message);
     }
   }
 
-  function processParsedData(items) {
-    items.flat(Infinity).forEach(item => {
-      const stationId = (item.stationId || item.scannableId || item['Scannable ID'] || 'UNKNOWN').trim();
-      if (!stationId || stationId === 'UNKNOWN') return;
+  function processPastedTable(text) {
+    const lines = text.split(/\r?\n/);
+    let currentStation = null;
 
-      if (!accumulatorStore[stationId]) {
-        accumulatorStore[stationId] = { stationId, totalQty: 0, items: [] };
-      }
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
 
-      const containers = item.containers || item.totes || [];
-      if (containers.length > 0) {
-        containers.forEach(c => {
-          const cName = c.toteId || c.scannableId || c.containerId || 'Tote';
-          const cQty = Number(c.qty || c.itemsCount || (c.items ? c.items.length : 0));
-          accumulatorStore[stationId].items.push({ name: cName, count: cQty });
-          accumulatorStore[stationId].totalQty += cQty;
-        });
-      } else {
-        const qty = Number(item.totalQty || item.items || item.count || 0);
-        accumulatorStore[stationId].totalQty += qty;
+      // Extract tokens separated by tabs, multiple spaces, or commas
+      const tokens = trimmed.split(/[\t,]+|\s{2,}/).map(t => t.trim()).filter(Boolean);
+      
+      const firstToken = tokens[0] || '';
+      
+      // Check if line represents a Station ID (e.g., DZ-P-B3220, dz-P-B3220-BUFFER)
+      if (firstToken.toLowerCase().startsWith('dz-') || firstToken.includes('-BUFFER') || tokens.includes('DROP_ZONE_PRIME')) {
+        currentStation = firstToken.toUpperCase();
+        
+        if (!accumulatorStore[currentStation]) {
+          accumulatorStore[currentStation] = { stationId: currentStation, totalQty: 0, totes: {} };
+        }
+      } 
+      // Check if line represents a Tote (e.g., tsX1gp16by9, TRANSFER_TOTE)
+      else if (currentStation) {
+        let toteId = firstToken;
+        let qty = 0;
+
+        // Find the numeric quantity in the row tokens
+        for (let i = 1; i < tokens.length; i++) {
+          const num = parseInt(tokens[i], 10);
+          if (!isNaN(num)) {
+            qty = num;
+            break;
+          }
+        }
+
+        // Ignore individual ASIN/Sellable rows if tote is already captured
+        const isTote = toteId.toLowerCase().startsWith('ts') || tokens.includes('TRANSFER_TOTE');
+        
+        if (isTote) {
+          if (!accumulatorStore[currentStation].totes[toteId]) {
+            accumulatorStore[currentStation].totes[toteId] = 0;
+          }
+          accumulatorStore[currentStation].totes[toteId] += qty;
+          accumulatorStore[currentStation].totalQty += qty;
+        }
       }
     });
   }
 
-  function processRawText(text) {
-    const lines = text.split('\n');
-    let currentStation = null;
+  function processJSON(data) {
+    const items = Array.isArray(data) ? data.flat(Infinity) : [data];
+    items.forEach(item => {
+      const stationId = (item.stationId || item.scannableId || item['Scannable ID'] || '').trim().toUpperCase();
+      if (!stationId) return;
 
-    lines.forEach(line => {
-      const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
-      if (parts.length === 0) return;
-
-      const firstPart = parts[0];
-      
-      // If line contains station ID pattern (e.g. DZ-P-..., dz-P-..., etc.)
-      if (firstPart.toLowerCase().startsWith('dz-') || firstPart.includes('-BUFFER')) {
-        currentStation = firstPart;
-        const qty = Number(parts[1]) || 0;
-
-        if (!accumulatorStore[currentStation]) {
-          accumulatorStore[currentStation] = { stationId: currentStation, totalQty: 0, items: [] };
-        }
-        accumulatorStore[currentStation].totalQty += qty;
-      } 
-      // If line belongs to a tote under current station
-      else if (currentStation && parts.length >= 2) {
-        const toteId = parts[0];
-        const count = Number(parts[1]) || 0;
-        accumulatorStore[currentStation].items.push({ name: toteId, count: count });
+      if (!accumulatorStore[stationId]) {
+        accumulatorStore[stationId] = { stationId, totalQty: 0, totes: {} };
       }
+
+      const containers = item.containers || item.totes || [];
+      containers.forEach(c => {
+        const toteId = c.toteId || c.scannableId || c.containerId || 'TOTE';
+        const qty = Number(c.qty || c.itemsCount || (c.items ? c.items.length : 0)) || 0;
+        
+        if (!accumulatorStore[stationId].totes[toteId]) {
+          accumulatorStore[stationId].totes[toteId] = 0;
+        }
+        accumulatorStore[stationId].totes[toteId] += qty;
+        accumulatorStore[stationId].totalQty += qty;
+      });
     });
   }
 
@@ -197,16 +210,17 @@
       const card = document.createElement('div');
       card.className = 'card';
 
-      // Field details subtext fallback
       const fieldSub = station.stationId.replace('DZ-P-', '') + ' Fields';
 
       let rowsHtml = '';
-      if (station.items && station.items.length > 0) {
-        station.items.forEach(item => {
+      const toteKeys = Object.keys(station.totes);
+
+      if (toteKeys.length > 0) {
+        toteKeys.forEach(toteId => {
           rowsHtml += `
             <tr>
-              <td>${item.name}</td>
-              <td class="text-right">${item.count}</td>
+              <td>${toteId}</td>
+              <td class="text-right">${station.totes[toteId]}</td>
             </tr>`;
         });
       } else {
@@ -229,7 +243,7 @@
           <table>
             <thead>
               <tr>
-                <th>STATION NAME</th>
+                <th>STATION / TOTE NAME</th>
                 <th class="text-right">COUNT</th>
               </tr>
             </thead>
@@ -245,31 +259,27 @@
 
   function sortData(type) {
     let list = Object.values(accumulatorStore);
-    if (type === 'name-asc') {
-      list.sort((a, b) => a.stationId.localeCompare(b.stationId));
-    } else if (type === 'name-desc') {
-      list.sort((a, b) => b.stationId.localeCompare(a.stationId));
-    } else if (type === 'qty-desc') {
-      list.sort((a, b) => b.totalQty - a.totalQty);
-    } else if (type === 'qty-asc') {
-      list.sort((a, b) => a.totalQty - b.totalQty);
-    }
+    if (type === 'name-asc') list.sort((a, b) => a.stationId.localeCompare(b.stationId));
+    if (type === 'name-desc') list.sort((a, b) => b.stationId.localeCompare(a.stationId));
+    if (type === 'qty-desc') list.sort((a, b) => b.totalQty - a.totalQty);
+    if (type === 'qty-asc') list.sort((a, b) => a.totalQty - b.totalQty);
     renderGrid(list);
   }
 
   function resetAllData() {
-    if (confirm("Are you sure you want to reset all accumulated station data?")) {
+    if (confirm("Reset all accumulated station data?")) {
       accumulatorStore = {};
       renderGrid();
     }
   }
 
   function exportToExcel() {
-    let csvContent = "data:text/csv;charset=utf-8,Station ID,Tote/Item ID,Count,Total Station Units\n";
+    let csvContent = "data:text/csv;charset=utf-8,Station ID,Tote ID,Count,Total Station Units\n";
     Object.values(accumulatorStore).forEach(s => {
-      if (s.items.length > 0) {
-        s.items.forEach(i => {
-          csvContent += `"${s.stationId}","${i.name}",${i.count},${s.totalQty}\n`;
+      const toteKeys = Object.keys(s.totes);
+      if (toteKeys.length > 0) {
+        toteKeys.forEach(toteId => {
+          csvContent += `"${s.stationId}","${toteId}",${s.totes[toteId]},${s.totalQty}\n`;
         });
       } else {
         csvContent += `"${s.stationId}","N/A",${s.totalQty},${s.totalQty}\n`;
