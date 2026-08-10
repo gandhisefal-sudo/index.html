@@ -6,7 +6,7 @@
   <title>Unified 3-Column Accumulator</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    body { font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 20px; color: #333; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 20px; color: #333; }
     .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
     h2 { margin-top: 0; color: #0066c0; font-size: 22px; display: flex; align-items: center; gap: 8px; }
     p.subtitle { color: #555; font-size: 14px; margin-bottom: 12px; }
@@ -87,22 +87,111 @@
       const rawText = document.getElementById('input-data').value;
       if (!rawText.trim()) return;
 
-      const lines = rawText.trim().split('\n');
+      const parsedItems = parseInputData(rawText);
+
+      if (parsedItems.length === 0) {
+        alert("No valid station/quantity data found. Please check copied text.");
+        return;
+      }
+
+      parsedItems.forEach(({ station, count }) => {
+        masterInventory[station] = (masterInventory[station] || 0) + count;
+      });
+
+      try {
+        localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
+      } catch(e) {}
+
+      document.getElementById('input-data').value = '';
+      renderTables();
+    }
+
+    function parseInputData(rawText) {
+      const results = [];
+      const cleaned = rawText.trim();
+      const ignoredKeys = /^(scannable|scannableid|id|items|container|status|count|qty|totalqty|total|ei|itemcount|location|name|field)$/i;
+
+      // 1. JSON handling
+      if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(cleaned);
+
+          if (!Array.isArray(parsed) && typeof parsed === 'object') {
+            Object.keys(parsed).forEach(key => {
+              const cleanKey = key.replace(/[^a-zA-Z0-9_\-]/g, '').trim();
+              const val = parseInt(parsed[key], 10);
+              if (cleanKey && !ignoredKeys.test(cleanKey) && !isNaN(val)) {
+                results.push({ station: cleanKey.replace(/\s+md-A$/i, ''), count: val });
+              }
+            });
+            if (results.length > 0) return results;
+          }
+
+          const list = Array.isArray(parsed) ? parsed : [parsed];
+          list.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id || item.location;
+              const count = item.items ?? item.itemCount ?? item.quantity ?? item.count ?? item.qty;
+
+              if (station && count !== undefined && !isNaN(parseInt(count, 10))) {
+                const cleanStation = String(station).replace(/[^a-zA-Z0-9_\-]/g, '').replace(/\s+md-A$/i, '').trim();
+                if (cleanStation && !ignoredKeys.test(cleanStation)) {
+                  results.push({ station: cleanStation, count: parseInt(count, 10) });
+                }
+              }
+            }
+          });
+
+          if (results.length > 0) return results;
+        } catch (e) {}
+      }
+
+      // 2. Line-by-line text and table parser
+      const lines = cleaned.split(/\r?\n/);
+
       lines.forEach(line => {
-        const cols = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
-        if (cols.length >= 2) {
-          const station = cols[0].replace(/\s+md-A$/i, '');
-          const count = parseInt(cols[1], 10);
-          
-          if (station && !isNaN(count) && !station.toLowerCase().includes('scannable id')) {
-            masterInventory[station] = (masterInventory[station] || 0) + count;
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return;
+
+        let tokens = trimmedLine.split(/[\t,]+|\s{2,}/).map(t => t.trim()).filter(Boolean);
+        if (tokens.length < 2) {
+          tokens = trimmedLine.split(/\s+/).map(t => t.trim()).filter(Boolean);
+        }
+
+        if (tokens.length >= 2) {
+          let countIdx = -1;
+          for (let i = tokens.length - 1; i >= 0; i--) {
+            const cleanNum = tokens[i].replace(/[^0-9]/g, '');
+            if (/^\d+$/.test(cleanNum) && cleanNum.length > 0) {
+              countIdx = i;
+              break;
+            }
+          }
+
+          if (countIdx !== -1) {
+            const count = parseInt(tokens[countIdx].replace(/[^0-9]/g, ''), 10);
+            
+            const stationCandidates = tokens.filter((t, idx) => {
+              if (idx === countIdx) return false;
+              const cleanWord = t.replace(/[^a-zA-Z0-9_\-]/g, '').trim();
+              return cleanWord && !ignoredKeys.test(cleanWord) && !/^\d+$/.test(cleanWord);
+            });
+
+            if (stationCandidates.length > 0) {
+              const station = stationCandidates.join(' ')
+                .replace(/["':]/g, '')
+                .replace(/\s+md-A$/i, '')
+                .trim();
+              
+              if (station && !station.toLowerCase().includes('scannable id')) {
+                results.push({ station, count });
+              }
+            }
           }
         }
       });
 
-      localStorage.setItem('fc_master_inventory', JSON.stringify(masterInventory));
-      document.getElementById('input-data').value = '';
-      renderTables();
+      return results;
     }
 
     function getFloorGroup(station) {
@@ -167,13 +256,19 @@
     }
 
     function resetCalculator() {
-      localStorage.removeItem('fc_master_inventory');
+      try {
+        localStorage.removeItem('fc_master_inventory');
+      } catch(e) {}
       masterInventory = {};
       document.getElementById('input-data').value = '';
       renderTables();
     }
 
     function exportToExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert("SheetJS library not loaded.");
+        return;
+      }
       const rows = [['Station Name', 'Count', 'Floor', 'Field']];
       Object.keys(masterInventory).forEach(station => {
         rows.push([
