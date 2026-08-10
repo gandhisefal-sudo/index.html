@@ -44,7 +44,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste data from multiple links sequentially. Totals accumulate automatically until you click "Reset All Data".</p>
+    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple links.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -55,7 +55,7 @@
     </div>
 
     <div id="accumStatus" class="accum-status">
-        🔄 Multi-link Accumulation Active: Data from multiple pastes is currently merged. Click "Reset All Data" to clear memory.
+        🔄 Multi-link Accumulation Active: Data from multiple pastes is currently merged. Click "Reset All Data" to start fresh.
     </div>
 
     <div id="sortControls" class="sort-section">
@@ -161,86 +161,95 @@
         }
     }
 
-    function extractToteAndQty(line) {
-        let tokens = line.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
-        if (tokens.length === 0) return null;
+    function processTextDirect(rawText, targetMap) {
+        let lines = rawText.split('\n');
+        let tokens = [];
 
-        let toteIndex = -1;
-        let toteId = null;
-
-        for (let i = 0; i < tokens.length; i++) {
-            let tok = tokens[i];
-            if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
-
-            if (/^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) || (/^[a-zA-Z0-9_-]{6,}$/.test(tok) && /[a-zA-Z]/.test(tok) && /\d/.test(tok))) {
-                toteId = tok;
-                toteIndex = i;
-                break;
+        for (let l = 0; l < lines.length; l++) {
+            let lineStr = lines[l].replace(/\u00A0/g, ' ').trim();
+            if (!lineStr) continue;
+            let parts = lineStr.split(/\s+/);
+            for (let p of parts) {
+                let cleanPart = p.replace(/["':,{} [\]]/g, '').trim();
+                if (cleanPart) {
+                    tokens.push({ text: cleanPart, rawLine: lineStr, lineIdx: l });
+                }
             }
         }
 
-        if (!toteId) return null;
-
-        let explicitMatch = line.match(/(\d+)\s*items?/i);
-        if (explicitMatch) {
-            return { id: toteId, qty: parseInt(explicitMatch[1], 10) };
-        }
-
-        let numbersAfter = [];
-        for (let i = toteIndex + 1; i < tokens.length; i++) {
-            let n = parseInt(tokens[i].replace(/[,;]/g, ''), 10);
-            if (!isNaN(n)) numbersAfter.push(n);
-        }
-
-        if (numbersAfter.length > 0) {
-            return { id: toteId, qty: numbersAfter[0] };
-        }
-
-        let numbersBefore = [];
-        for (let i = 0; i < toteIndex; i++) {
-            let n = parseInt(tokens[i].replace(/[,;]/g, ''), 10);
-            if (!isNaN(n)) numbersBefore.push(n);
-        }
-
-        if (numbersBefore.length > 0) {
-            return { id: toteId, qty: numbersBefore[numbersBefore.length - 1] };
-        }
-
-        return null;
-    }
-
-    function processTextDirect(rawText, targetMap) {
-        let lines = rawText.split('\n');
         let activeStation = null;
 
-        for (let i = 0; i < lines.length; i++) {
-            let clean = lines[i].replace(/\u00A0/g, ' ').trim();
-            if (!clean) continue;
+        for (let i = 0; i < tokens.length; i++) {
+            let tok = tokens[i].text;
 
-            let matchStation = clean.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
-            if (matchStation && (clean.toUpperCase().includes("DZ-P") || clean.toUpperCase().includes("BUFFER"))) {
+            let matchStation = tok.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
+            if (matchStation && (tok.toUpperCase().includes("DZ-P") || tok.toUpperCase().includes("BUFFER"))) {
                 activeStation = matchStation[1].toUpperCase().trim();
-                
-                let remainder = clean.substring(matchStation.index + matchStation[0].length).trim();
-                let headerMatch = remainder.match(/^[\s\(:=]*(\d+)[\s\)]*$/);
-                let headerVal = headerMatch ? parseInt(headerMatch[1], 10) : 0;
-
                 if (!targetMap[activeStation]) {
-                    targetMap[activeStation] = { headerQty: headerVal, containers: [] };
-                } else if (headerVal > targetMap[activeStation].headerQty) {
-                    targetMap[activeStation].headerQty = headerVal;
+                    targetMap[activeStation] = { headerQty: 0, containers: [] };
                 }
                 continue;
             }
 
-            if (activeStation) {
-                let parsedTote = extractToteAndQty(clean);
-                if (parsedTote && parsedTote.qty > 0) {
-                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === parsedTote.id.toLowerCase());
-                    if (!existing) {
-                        targetMap[activeStation].containers.push({ containerId: parsedTote.id, qty: parsedTote.qty });
+            let lineMatch = tokens[i].rawLine.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)/i);
+            if (lineMatch && (tokens[i].rawLine.toUpperCase().includes("DZ-P") || tokens[i].rawLine.toUpperCase().includes("BUFFER"))) {
+                let foundSt = lineMatch[1].toUpperCase().trim();
+                if (activeStation !== foundSt) {
+                    activeStation = foundSt;
+                    if (!targetMap[activeStation]) {
+                        targetMap[activeStation] = { headerQty: 0, containers: [] };
+                    }
+                }
+            }
+
+            if (!activeStation) continue;
+
+            if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
+
+            let isTote = /^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) ||
+                         (/^[a-zA-Z0-9_-]{6,}$/.test(tok) && /[a-zA-Z]/.test(tok) && /\d/.test(tok));
+
+            if (isTote) {
+                let toteId = tok;
+                let qtyVal = null;
+
+                let sameLineTokens = tokens.filter(t => t.lineIdx === tokens[i].lineIdx);
+                let sameLineNumbers = sameLineTokens
+                    .map(t => parseInt(t.text.replace(/[,;]/g, ''), 10))
+                    .filter(n => !isNaN(n));
+
+                let explicitMatch = tokens[i].rawLine.match(/(\d+)\s*items?/i);
+                if (explicitMatch) {
+                    qtyVal = parseInt(explicitMatch[1], 10);
+                } else if (sameLineNumbers.length > 0) {
+                    let tokIdxInLine = sameLineTokens.findIndex(t => t.text === tok);
+                    let numbersAfter = sameLineTokens.slice(tokIdxInLine + 1)
+                        .map(t => parseInt(t.text.replace(/[,;]/g, ''), 10))
+                        .filter(n => !isNaN(n));
+
+                    if (numbersAfter.length > 0) {
+                        qtyVal = numbersAfter[0];
                     } else {
-                        existing.qty += parsedTote.qty;
+                        qtyVal = sameLineNumbers[sameLineNumbers.length - 1];
+                    }
+                }
+
+                if (qtyVal === null || isNaN(qtyVal)) {
+                    for (let j = i + 1; j < Math.min(i + 6, tokens.length); j++) {
+                        let nextTok = tokens[j].text.replace(/[,;]/g, '');
+                        if (/^\d+$/.test(nextTok)) {
+                            qtyVal = parseInt(nextTok, 10);
+                            break;
+                        }
+                    }
+                }
+
+                if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
+                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
+                    if (!existing) {
+                        targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
+                    } else {
+                        existing.qty = Math.max(existing.qty, qtyVal);
                     }
                 }
             }
@@ -289,7 +298,7 @@
                     if (id && q > 0 && !isInvalidKey(id) && /^[a-zA-Z0-9_\-]+$/.test(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty += q;
+                        else existing.qty = Math.max(existing.qty, q);
                     }
                 });
             }
