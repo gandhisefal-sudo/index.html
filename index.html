@@ -1,79 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unified 3-Column Accumulator</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; margin: 20px; color: #333; }
-    .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
-    h2 { margin-top: 0; color: #0066c0; font-size: 22px; display: flex; align-items: center; gap: 8px; }
-    p.subtitle { color: #555; font-size: 14px; margin-bottom: 12px; }
-    textarea { width: 100%; height: 110px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; font-family: monospace; box-sizing: border-box; resize: vertical; }
-    .btn-group { margin-top: 12px; display: flex; gap: 10px; }
-    button { border: none; padding: 10px 18px; font-weight: bold; border-radius: 6px; cursor: pointer; color: white; transition: opacity 0.2s; }
-    button:hover { opacity: 0.9; }
-    .btn-process { background-color: #2e7d32; }
-    .btn-export { background-color: #00796b; }
-    .btn-reset { background-color: #888; }
-
-    .columns-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .col-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; overflow: hidden; }
-    .col-header { background: #0066c0; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-    .col-header h3 { margin: 0; font-size: 16px; }
-    .col-header span.subtitle-floor { font-size: 11px; opacity: 0.8; display: block; }
-    .badge { background: rgba(255,255,255,0.25); padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; }
-    
-    .table-container { padding: 12px; max-height: 500px; overflow-y: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; }
-    .count-col { text-align: right; font-weight: bold; color: #111; }
-    .section-header { background: #e3f2fd; font-weight: bold; color: #0d47a1; font-size: 11px; letter-spacing: 0.5px; }
-    .buffer-header { background: #fff3e0; color: #e65100; }
-    .empty-msg { text-align: center; color: #888; font-style: italic; padding: 20px 0; font-size: 13px; }
-  </style>
-</head>
-<body>
-
-  <div class="card">
-    <h2>📊 Unified 3-Column Accumulator</h2>
-    <p class="subtitle">Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns with clear visual separation between A and B fields.</p>
-    <textarea id="input-data" placeholder="Paste station data here..."></textarea>
-    <div class="btn-group">
-      <button class="btn-process" onclick="processData()">Process & Sum Quantities</button>
-      <button class="btn-export" onclick="exportToExcel()">📊 Export to Excel</button>
-      <button class="btn-reset" onclick="resetCalculator()">Reset</button>
-    </div>
-  </div>
-
-  <div class="columns-grid">
-    <div class="col-card">
-      <div class="col-header">
-        <div><h3>DZ-P-A2000</h3><span class="subtitle-floor">A2 & B2 Fields</span></div>
-        <div id="badge-a2000" class="badge">0 Units</div>
-      </div>
-      <div id="table-a2000" class="table-container"></div>
-    </div>
-
-    <div class="col-card">
-      <div class="col-header">
-        <div><h3>DZ-P-A3000</h3><span class="subtitle-floor">A3 & B3 Fields</span></div>
-        <div id="badge-a3000" class="badge">0 Units</div>
-      </div>
-      <div id="table-a3000" class="table-container"></div>
-    </div>
-
-    <div class="col-card">
-      <div class="col-header">
-        <div><h3>DZ-P-A4000</h3><span class="subtitle-floor">A4 & B4 Fields</span></div>
-        <div id="badge-a4000" class="badge">0 Units</div>
-      </div>
-      <div id="table-a4000" class="table-container"></div>
-    </div>
-  </div>
-
-  <script>
+<script>
     let masterInventory = {};
     try {
       masterInventory = JSON.parse(localStorage.getItem('fc_master_inventory')) || {};
@@ -109,21 +34,38 @@
     function parseInputData(rawText) {
       const results = [];
       const cleaned = rawText.trim();
+      const ignoredKeys = /^(scannable|id|items|container|status|count|qty|totalqty|total|ei|itemcount|location|name|field)$/i;
 
+      // 1. Try JSON parsing (Objects or Arrays)
       if (cleaned.startsWith('[') || cleaned.startsWith('{')) {
         try {
           const parsed = JSON.parse(cleaned);
-          const list = Array.isArray(parsed) ? parsed : [parsed];
           
-          list.forEach(item => {
-            const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id || item.location;
-            const count = item.items ?? item.itemCount ?? item.quantity ?? item.count;
+          // Case A: JSON Key-Value Object { "dz-P-A2000": 10, "dz-P-B3000": 5 }
+          if (!Array.isArray(parsed) && typeof parsed === 'object') {
+            Object.keys(parsed).forEach(key => {
+              const cleanKey = key.replace(/[^a-zA-Z0-9_\-]/g, '').trim();
+              const val = parseInt(parsed[key], 10);
+              if (cleanKey && !ignoredKeys.test(cleanKey) && !isNaN(val)) {
+                results.push({ station: cleanKey.replace(/\s+md-A$/i, ''), count: val });
+              }
+            });
+            if (results.length > 0) return results;
+          }
 
-            if (station && count !== undefined && !isNaN(parseInt(count, 10))) {
-              results.push({ 
-                station: String(station).replace(/\s+md-A$/i, '').trim(), 
-                count: parseInt(count, 10) 
-              });
+          // Case B: JSON Array of objects [{ "station": "dz-P-A2000", "count": 10 }]
+          const list = Array.isArray(parsed) ? parsed : [parsed];
+          list.forEach(item => {
+            if (typeof item === 'object' && item !== null) {
+              const station = item.scannableId || item.scannableIdName || item.station || item.containerId || item.id || item.location;
+              const count = item.items ?? item.itemCount ?? item.quantity ?? item.count ?? item.qty;
+
+              if (station && count !== undefined && !isNaN(parseInt(count, 10))) {
+                const cleanStation = String(station).replace(/[^a-zA-Z0-9_\-]/g, '').replace(/\s+md-A$/i, '').trim();
+                if (cleanStation && !ignoredKeys.test(cleanStation)) {
+                  results.push({ station: cleanStation, count: parseInt(count, 10) });
+                }
+              }
             }
           });
 
@@ -131,6 +73,7 @@
         } catch (e) {}
       }
 
+      // 2. Line-by-line parser for text / copied tables
       const lines = cleaned.split(/\r?\n/);
 
       lines.forEach(line => {
@@ -138,7 +81,6 @@
         if (!trimmedLine) return;
 
         let tokens = trimmedLine.split(/[\t,]+|\s{2,}/).map(t => t.trim()).filter(Boolean);
-
         if (tokens.length < 2) {
           tokens = trimmedLine.split(/\s+/).map(t => t.trim()).filter(Boolean);
         }
@@ -146,23 +88,28 @@
         if (tokens.length >= 2) {
           let countIdx = -1;
           for (let i = tokens.length - 1; i >= 0; i--) {
-            const cleanNum = tokens[i].replace(/,/g, '');
-            if (/^\d+$/.test(cleanNum)) {
+            const cleanNum = tokens[i].replace(/[^0-9]/g, '');
+            if (/^\d+$/.test(cleanNum) && cleanNum.length > 0) {
               countIdx = i;
               break;
             }
           }
 
           if (countIdx !== -1) {
-            const count = parseInt(tokens[countIdx].replace(/,/g, ''), 10);
+            const count = parseInt(tokens[countIdx].replace(/[^0-9]/g, ''), 10);
             
-            const stationCandidates = tokens.filter((t, idx) => 
-              idx !== countIdx && 
-              !/^(scannable|id|items|container|status|count|qty|total|ei|\d+)$/i.test(t)
-            );
+            const stationCandidates = tokens.filter((t, idx) => {
+              if (idx === countIdx) return false;
+              const cleanWord = t.replace(/[^a-zA-Z0-9_\-]/g, '').trim();
+              return cleanWord && !ignoredKeys.test(cleanWord) && !/^\d+$/.test(cleanWord);
+            });
 
             if (stationCandidates.length > 0) {
-              const station = stationCandidates.join(' ').replace(/\s+md-A$/i, '').trim();
+              const station = stationCandidates.join(' ')
+                .replace(/["':]/g, '')
+                .replace(/\s+md-A$/i, '')
+                .trim();
+              
               if (station && !station.toLowerCase().includes('scannable id')) {
                 results.push({ station, count });
               }
@@ -265,5 +212,3 @@
       XLSX.writeFile(wb, 'FC_Station_Counts.xlsx');
     }
   </script>
-</body>
-</html>
