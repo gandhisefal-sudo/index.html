@@ -44,7 +44,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple links.</p>
+    <p>Paste station data or web table outputs below. Data accumulates continuously across multiple transhipment hubs/links.</p>
     
     <textarea id="inputBox" placeholder="Paste data here..."></textarea>
     
@@ -55,7 +55,7 @@
     </div>
 
     <div id="accumStatus" class="accum-status">
-        🔄 Multi-link Accumulation Active: Data from multiple pastes is currently merged. Click "Reset All Data" to start fresh.
+        🔄 Multi-Hub Accumulation Active: Data from multiple transhipment hubs is currently merged. Click "Reset All Data" to start fresh.
     </div>
 
     <div id="sortControls" class="sort-section">
@@ -112,6 +112,16 @@
         return /^(totalQty|qty|quantity|count|totalItems|itemCount|station|stationName|containers|totes|scannables|items|sku|status|location|scannable|tote|id|name|EI|UI|OK|NO|ALL)$/i.test(idStr);
     }
 
+    function isToteId(tok) {
+        if (!tok || tok.length < 4 || tok.length > 30) return false;
+        if (isInvalidKey(tok)) return false;
+        if (/^(DZ-P|A2000|A3000|A4000|B2000|B3000|B4000)/i.test(tok)) return false;
+        if (/^\d+$/.test(tok)) return false;
+        
+        if (/^(ts|cs|sc|sp|p|t|amzn|zzv|xb|pb|cb)[a-z0-9_-]+/i.test(tok)) return true;
+        return /^[a-zA-Z0-9_-]{5,20}$/.test(tok) && /[a-zA-Z]/.test(tok);
+    }
+
     function calculateTotals() {
         let rawText = document.getElementById("inputBox").value;
         if (!rawText.trim()) {
@@ -134,7 +144,7 @@
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
             
-            itemData.containers = itemData.containers.filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
+            itemData.containers = itemData.containers.filter(c => c.qty > 0 && isToteId(c.containerId));
 
             let sumTotes = 0;
             itemData.containers.forEach(c => { sumTotes += c.qty; });
@@ -175,56 +185,71 @@
                 if (!targetMap[activeStation]) {
                     targetMap[activeStation] = { headerQty: 0, containers: [] };
                 }
+
+                // Check for standalone station header totals across hub reports
+                let headerQtyMatch = lineStr.match(/(DZ-P-[A-Z0-9\-]+(?:-BUFFER)?)\s*[:\t\- ]*\s*(\d+)/i);
+                if (headerQtyMatch) {
+                    let hQty = parseInt(headerQtyMatch[2], 10);
+                    if (!isNaN(hQty) && hQty > 0) {
+                        targetMap[activeStation].headerQty += hQty;
+                    }
+                }
             }
 
             if (!activeStation) continue;
 
-            // Remove tote badge counts like "73 Totes" or "73 containers" to avoid misreading as unit qty
-            let cleanedLine = lineStr.replace(/(\d+)\s*(totes?|containers?|stations?)/gi, '');
+            let cleanedLine = lineStr
+                .replace(/(\d+)\s*(totes?|containers?|stations?)/gi, '')
+                .replace(/page\s*\d+\s*(of\s*\d+)?/gi, '');
+
             let tokens = cleanedLine.split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '').trim()).filter(Boolean);
 
             for (let i = 0; i < tokens.length; i++) {
                 let tok = tokens[i];
-                if (isInvalidKey(tok) || /^\d+$/.test(tok)) continue;
+                if (!isToteId(tok)) continue;
 
-                let isTote = /^(ts|cs|sc|sp|p|t|amzn)[a-z0-9_-]+/i.test(tok) ||
-                             (/^[a-zA-Z0-9_-]{5,}$/.test(tok) && /[a-zA-Z]/.test(tok) && !tok.toUpperCase().includes("DZ-P"));
+                let toteId = tok;
+                let qtyVal = null;
 
-                if (isTote) {
-                    let toteId = tok;
-                    let qtyVal = null;
+                for (let j = i + 1; j < tokens.length; j++) {
+                    let candidate = parseInt(tokens[j].replace(/[,;]/g, ''), 10);
+                    if (!isNaN(candidate) && candidate >= 0) {
+                        qtyVal = candidate;
+                        break;
+                    }
+                }
 
-                    // 1. Check for explicit item format on same line (e.g. "34 items")
-                    let explicitMatch = cleanedLine.match(/(\d+)\s*items?/i);
-                    if (explicitMatch) {
-                        qtyVal = parseInt(explicitMatch[1], 10);
-                    } else {
-                        // 2. Extract remaining numbers on the same line
-                        let sameLineNums = tokens
-                            .map(t => parseInt(t.replace(/[,;]/g, ''), 10))
-                            .filter(n => !isNaN(n));
+                if (qtyVal === null) {
+                    for (let j = i - 1; j >= 0; j--) {
+                        let candidate = parseInt(tokens[j].replace(/[,;]/g, ''), 10);
+                        if (!isNaN(candidate) && candidate >= 0) {
+                            qtyVal = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                if (qtyVal === null && l + 1 < lines.length) {
+                    for (let nl = l + 1; nl < Math.min(l + 3, lines.length); nl++) {
+                        let nextTokens = lines[nl].trim().split(/\s+/).map(t => t.replace(/["':,{} [\]]/g, '')).filter(Boolean);
+                        if (nextTokens.length === 0) continue;
                         
-                        if (sameLineNums.length > 0) {
-                            qtyVal = sameLineNums[sameLineNums.length - 1];
+                        let candidate = parseInt(nextTokens[0], 10);
+                        if (!isNaN(candidate) && candidate >= 0) {
+                            qtyVal = candidate;
+                            break;
                         }
+                        if (isToteId(nextTokens[0]) || /DZ-P-/i.test(nextTokens[0])) break;
                     }
+                }
 
-                    // 3. Look at immediate next line only if it is formatted as a single number (e.g. "34")
-                    if ((qtyVal === null || isNaN(qtyVal)) && l + 1 < lines.length) {
-                        let nextLine = lines[l + 1].trim();
-                        let nextMatch = nextLine.match(/^(\d+)\s*(items?)?$/i);
-                        if (nextMatch) {
-                            qtyVal = parseInt(nextMatch[1], 10);
-                        }
-                    }
-
-                    if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
-                        let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
-                        if (!existing) {
-                            targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
-                        } else {
-                            existing.qty = qtyVal;
-                        }
+                if (qtyVal !== null && !isNaN(qtyVal) && qtyVal > 0) {
+                    let existing = targetMap[activeStation].containers.find(c => c.containerId.toLowerCase() === toteId.toLowerCase());
+                    if (!existing) {
+                        targetMap[activeStation].containers.push({ containerId: toteId, qty: qtyVal });
+                    } else {
+                        // Additive accumulation across different transhipment hubs
+                        existing.qty += qtyVal;
                     }
                 }
             }
@@ -270,10 +295,10 @@
                     let id = rawId.replace(/["':,{} [\]]/g, '').trim();
                     let q = parseInt(c.qty || c.quantity || c.itemCount || c.count || c.totalItems || 0, 10);
                     
-                    if (id && q > 0 && !isInvalidKey(id) && /^[a-zA-Z0-9_\-]+$/.test(id)) {
+                    if (id && q > 0 && isToteId(id)) {
                         let existing = targetMap[station].containers.find(x => x.containerId.toLowerCase() === id.toLowerCase());
                         if (!existing) targetMap[station].containers.push({ containerId: id, qty: q });
-                        else existing.qty = q;
+                        else existing.qty += q; // Additive accumulation across hubs
                     }
                 });
             }
@@ -297,7 +322,7 @@
     }
 
     function renderStationRow(tbody, item) {
-        let activeContainers = (item.containers || []).filter(c => c.qty > 0 && !isInvalidKey(c.containerId));
+        let activeContainers = (item.containers || []).filter(c => c.qty > 0 && isToteId(c.containerId));
         let hasContainers = activeContainers.length > 0;
         let isExpanded = expandedStations.has(item.station);
 
@@ -390,7 +415,7 @@
             "Group": i.group,
             "Field": /DZ-P-B/i.test(i.station) ? "B-Field" : "A-Field",
             "Station Name": i.station,
-            "Tote Count": (i.containers || []).filter(c => c.qty > 0 && !isInvalidKey(c.containerId)).length,
+            "Tote Count": (i.containers || []).filter(c => c.qty > 0 && isToteId(c.containerId)).length,
             "Total Quantity": i.qty
         }));
         let ws = XLSX.utils.json_to_sheet(data);
