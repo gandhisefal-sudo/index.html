@@ -15,6 +15,7 @@
             --border: #e0e0e0;
             --text-main: #333333;
             --buffer-bg: #fff8e6;
+            --cvr-bg: #e8f4f8;
         }
 
         body {
@@ -80,10 +81,9 @@
             border: 1px solid var(--border);
         }
 
-        /* Dynamic Grid Layout for Columns */
         .floors-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 20px;
             margin-bottom: 60px;
         }
@@ -114,9 +114,11 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #666;
-            margin: 10px 0 5px 0;
+            color: #555;
+            margin: 12px 0 6px 0;
             font-weight: bold;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 3px;
         }
 
         .station-row {
@@ -131,6 +133,11 @@
         .station-row.buffer-station {
             background-color: var(--buffer-bg);
             border-color: #ffe0b2;
+        }
+
+        .station-row.cvr-station {
+            background-color: var(--cvr-bg);
+            border-color: #b3e5fc;
         }
 
         .station-summary {
@@ -189,7 +196,7 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste JSON payload or tab-delimited station data here..."></textarea>
+            <textarea id="dataInput" placeholder="Paste JSON payload from Tampermonkey copier or tab-delimited station data here..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
@@ -222,11 +229,9 @@
             if (!rawInput) return;
 
             try {
-                // Try JSON Parsing
                 const parsed = JSON.parse(rawInput);
                 ingestJSON(parsed);
             } catch (e) {
-                // Fallback to Raw Text / Tab-delimited Parsing
                 ingestText(rawInput);
             }
 
@@ -234,25 +239,72 @@
         }
 
         function extractFloorKey(stationName) {
-            // Regex matches floor indicators like A2, B2, A3, B3, A4, B4, A5, B5, etc.
-            const match = stationName.match(/([AB])(\d)/i);
+            const name = stationName.toUpperCase();
+
+            // Extract floor digit (e.g., A2, B3, CVRR-A4, CVRR-2)
+            const match = name.match(/([AB])(\d)/) || name.match(/(\d)/);
             if (match) {
-                const floorNum = match[2];
-                return `DZ-P-A${floorNum}000`;
+                const digit = match[2] || match[1];
+                if (['1','2','3','4','5','6'].includes(digit)) {
+                    return `DZ-P-A${digit}000`;
+                }
             }
-            return 'DZ-P-OTHER';
+
+            return 'DZ-P-GENERAL';
+        }
+
+        function getStationCategory(stationName) {
+            const name = stationName.toUpperCase();
+            if (name.includes('CVRR') || name.includes('CVRC')) return 'cvr';
+            if (name.includes('BUFFER') || /^B/i.test(name) || name.includes('-B')) return 'buffer';
+            return 'standard';
         }
 
         function ingestJSON(data) {
             const items = Array.isArray(data) ? data : [data];
-            
+
             items.forEach(item => {
                 const station = item.station || item.stationId || item.location || 'UNKNOWN';
-                const qty = Number(item.quantity || item.unitCount || item.qty || 1);
-                const tote = item.toteId || item.containerId || null;
-                const sku = item.sku || null;
+                const totalQty = Number(item.totalQty || item.quantity || item.unitCount || item.qty || 0);
+                const containers = Array.isArray(item.containers) ? item.containers : [];
 
-                recordStationData(station, qty, tote, sku);
+                const floorKey = extractFloorKey(station);
+                const category = getStationCategory(station);
+
+                if (!accumulatedDataGlobal[floorKey]) {
+                    accumulatedDataGlobal[floorKey] = {};
+                }
+
+                if (!accumulatedDataGlobal[floorKey][station]) {
+                    accumulatedDataGlobal[floorKey][station] = {
+                        totalQty: 0,
+                        category: category,
+                        totes: new Set(),
+                        skus: new Set()
+                    };
+                }
+
+                let stationRef = accumulatedDataGlobal[floorKey][station];
+
+                // Process Containers / Totes
+                if (containers.length > 0) {
+                    let containerSum = 0;
+                    containers.forEach(c => {
+                        const toteId = c.containerId || c.id || c.toteId;
+                        if (toteId) stationRef.totes.add(toteId);
+
+                        const itemsList = Array.isArray(c.items) ? c.items : [];
+                        itemsList.forEach(i => {
+                            if (i.sku) stationRef.skus.add(i.sku);
+                        });
+
+                        containerSum += Number(c.qty || 0);
+                    });
+
+                    stationRef.totalQty += Math.max(totalQty, containerSum);
+                } else {
+                    stationRef.totalQty += totalQty;
+                }
             });
         }
 
@@ -264,31 +316,23 @@
                     const station = parts[0].trim();
                     const qty = parseInt(parts[1].trim(), 10) || 0;
                     if (station) {
-                        recordStationData(station, qty, null, null);
+                        const floorKey = extractFloorKey(station);
+                        const category = getStationCategory(station);
+
+                        if (!accumulatedDataGlobal[floorKey]) accumulatedDataGlobal[floorKey] = {};
+                        if (!accumulatedDataGlobal[floorKey][station]) {
+                            accumulatedDataGlobal[floorKey][station] = {
+                                totalQty: 0,
+                                category: category,
+                                totes: new Set(),
+                                skus: new Set()
+                            };
+                        }
+
+                        accumulatedDataGlobal[floorKey][station].totalQty += qty;
                     }
                 }
             });
-        }
-
-        function recordStationData(station, qty, tote, sku) {
-            const floorKey = extractFloorKey(station);
-
-            if (!accumulatedDataGlobal[floorKey]) {
-                accumulatedDataGlobal[floorKey] = {};
-            }
-
-            if (!accumulatedDataGlobal[floorKey][station]) {
-                accumulatedDataGlobal[floorKey][station] = {
-                    totalQty: 0,
-                    isBuffer: /^B/i.test(station) || station.includes('-B'),
-                    totes: new Set(),
-                    skus: new Set()
-                };
-            }
-
-            accumulatedDataGlobal[floorKey][station].totalQty += qty;
-            if (tote) accumulatedDataGlobal[floorKey][station].totes.add(tote);
-            if (sku) accumulatedDataGlobal[floorKey][station].skus.add(sku);
         }
 
         function renderData() {
@@ -317,7 +361,6 @@
                 const floorTotal = stationsList.reduce((sum, s) => sum + s.totalQty, 0);
                 grandTotal += floorTotal;
 
-                // Build Dynamic Column
                 const colEl = document.createElement('div');
                 colEl.className = 'floor-column';
 
@@ -329,18 +372,24 @@
                 `;
                 colEl.appendChild(headerEl);
 
-                // Split into Standard vs Buffer
-                const standardStations = stationsList.filter(s => !s.isBuffer);
-                const bufferStations = stationsList.filter(s => s.isBuffer);
+                // Group by categories
+                const standardStations = stationsList.filter(s => s.category === 'standard');
+                const bufferStations = stationsList.filter(s => s.category === 'buffer');
+                const cvrStations = stationsList.filter(s => s.category === 'cvr');
 
                 if (standardStations.length > 0) {
-                    colEl.appendChild(createSectionLabel('Standard Stations'));
+                    colEl.appendChild(createSectionLabel('Standard Stations (A-Field)'));
                     standardStations.forEach(s => colEl.appendChild(createStationRow(s)));
                 }
 
                 if (bufferStations.length > 0) {
-                    colEl.appendChild(createSectionLabel('Buffer (B-Field) Stations'));
+                    colEl.appendChild(createSectionLabel('Buffer Stations (B-Field)'));
                     bufferStations.forEach(s => colEl.appendChild(createStationRow(s)));
+                }
+
+                if (cvrStations.length > 0) {
+                    colEl.appendChild(createSectionLabel('CVRR / CVRC Conveyor Stations'));
+                    cvrStations.forEach(s => colEl.appendChild(createStationRow(s)));
                 }
 
                 container.appendChild(colEl);
@@ -358,7 +407,8 @@
 
         function createStationRow(station) {
             const row = document.createElement('div');
-            row.className = `station-row ${station.isBuffer ? 'buffer-station' : ''}`;
+            const classType = station.category === 'buffer' ? 'buffer-station' : (station.category === 'cvr' ? 'cvr-station' : '');
+            row.className = `station-row ${classType}`;
 
             const isOpen = expandedStations.has(station.name);
 
@@ -377,17 +427,17 @@
         function renderStationDetails(station) {
             let html = '';
             if (station.totes.size > 0) {
-                html += `<div><strong>Totes:</strong><br>`;
+                html += `<div><strong>Totes (${station.totes.size}):</strong><br>`;
                 station.totes.forEach(tote => {
                     html += `<a href="https://fcresearch-eu.aka.amazon.com/search?q=${tote}" target="_blank" class="tote-link">${tote}</a>`;
                 });
                 html += `</div>`;
             }
             if (station.skus.size > 0) {
-                html += `<div style="margin-top:5px;"><strong>Unique SKUs:</strong> ${station.skus.size}</div>`;
+                html += `<div style="margin-top:6px;"><strong>Unique SKUs:</strong> ${station.skus.size}</div>`;
             }
             if (station.totes.size === 0 && station.skus.size === 0) {
-                html = `<em>No container breakdown available.</em>`;
+                html = `<em>No container/SKU breakdown available.</em>`;
             }
             return html;
         }
@@ -410,7 +460,7 @@
 
         function exportToExcel() {
             const rows = [];
-            
+
             Object.keys(accumulatedDataGlobal).forEach(floorKey => {
                 const stationsObj = accumulatedDataGlobal[floorKey];
                 Object.keys(stationsObj).forEach(stationName => {
@@ -418,7 +468,7 @@
                     rows.push({
                         'Floor': floorKey,
                         'Station': stationName,
-                        'Type': s.isBuffer ? 'Buffer (B-Field)' : 'Standard',
+                        'Category': s.category.toUpperCase(),
                         'Total Units': s.totalQty,
                         'Totes Count': s.totes.size,
                         'SKUs Count': s.skus.size
