@@ -206,12 +206,12 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste data here from Tampermonkey..."></textarea>
+            <textarea id="dataInput" placeholder="Paste data here from Tab 1..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
             <button class="btn-export" onclick="exportToCSV()">Export Excel (CSV)</button>
-            <button class="btn-clear" onclick="clearData()">Clear</button>
+            <button class="btn-clear" onclick="clearData()">Clear All Data</button>
             <label style="margin-left:auto; font-size: 0.9rem;">Sort By: 
                 <select id="sortSelect" onchange="renderData()">
                     <option value="name-asc">Station Name (A-Z)</option>
@@ -242,21 +242,18 @@
         }
 
         function processData() {
-            const rawInput = document.getElementById('dataInput').value.trim();
+            const inputEl = document.getElementById('dataInput');
+            const rawInput = inputEl.value.trim();
             if (!rawInput) {
                 showStatus("⚠️ Text box is empty. Paste data first.", true);
                 return;
             }
-
-            accumulatedDataGlobal = {};
-            expandedStations.clear();
 
             let parsed = null;
             try {
                 parsed = JSON.parse(rawInput);
             } catch (e1) {
                 try {
-                    // Try cleaning up trailing commas or extra spaces
                     let cleaned = rawInput.replace(/,\s*([\]}])/g, '$1');
                     parsed = JSON.parse(cleaned);
                 } catch (e2) {
@@ -270,6 +267,9 @@
                 ingestText(rawInput);
             }
 
+            // Auto-clear the text area so it's ready for the next tab's paste
+            inputEl.value = '';
+
             renderData();
         }
 
@@ -277,7 +277,6 @@
             if (!stationName) return 'DZ-P-GENERAL';
             const str = String(stationName).toUpperCase();
 
-            // Finds floor digits 1-6 anywhere in station string
             const match = str.match(/(?:DZ-P-A|DZ-P-B|A|B|CVRR|CVRC)[\-]?([1-6])/i) || str.match(/([1-6])/);
 
             if (match && match[1]) {
@@ -437,9 +436,9 @@
             document.getElementById('grandTotalUnits').innerText = `${grandTotal.toLocaleString()} Units`;
 
             if (totalStationsCount > 0) {
-                showStatus(`✅ Successfully calculated ${totalStationsCount} station(s) across ${floorKeys.length} floor(s) (${grandTotal.toLocaleString()} total units).`);
+                showStatus(`✅ Data added! Accumulated Total: ${totalStationsCount} station(s) across ${floorKeys.length} floor(s) (${grandTotal.toLocaleString()} units). Paste Tab 2 data whenever you are ready!`);
             } else {
-                showStatus("⚠️ No valid stations found in the pasted data. Please check what was copied.", true);
+                showStatus("⚠️ No valid stations found in the pasted data.", true);
             }
         }
 
