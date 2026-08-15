@@ -238,16 +238,15 @@
             renderData();
         }
 
+        // Updated Floor Extractor to handle CVRR and CVRC locations cleanly
         function extractFloorKey(stationName) {
             const name = stationName.toUpperCase();
 
-            // Extract floor digit (e.g., A2, B3, CVRR-A4, CVRR-2)
-            const match = name.match(/([AB])(\d)/) || name.match(/(\d)/);
-            if (match) {
-                const digit = match[2] || match[1];
-                if (['1','2','3','4','5','6'].includes(digit)) {
-                    return `DZ-P-A${digit}000`;
-                }
+            // Matches floor digits (1-6) after A, B, -, or CVR prefixes (e.g. A2, B3, CVRR-A2, CVRR-2)
+            const match = name.match(/(?:[ABP\-]|\bCVR[RC]\b?)([1-6])/i) || name.match(/([1-6])/);
+
+            if (match && match[1]) {
+                return `DZ-P-A${match[1]}000`;
             }
 
             return 'DZ-P-GENERAL';
