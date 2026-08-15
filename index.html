@@ -17,6 +17,8 @@
             --cvrr-border: #1e88e5;
             --cvrc-bg: #e8f5e9;
             --cvrc-border: #43a047;
+            --cvr-gen-bg: #f3e5f5;
+            --cvr-gen-border: #8e24aa;
         }
 
         body {
@@ -175,6 +177,12 @@
             border-left: 4px solid var(--cvrc-border);
         }
 
+        .station-row.cvr-gen-station {
+            background-color: var(--cvr-gen-bg);
+            border-color: #e1bee7;
+            border-left: 4px solid var(--cvr-gen-border);
+        }
+
         .station-summary {
             padding: 8px 12px;
             display: flex;
@@ -233,7 +241,7 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste data here from Tab 1..."></textarea>
+            <textarea id="dataInput" placeholder="Paste data here from Tab 1 or Tampermonkey..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
@@ -302,19 +310,19 @@
             if (!stationName) return 'DZ-P-GENERAL';
             const str = String(stationName).toUpperCase();
 
-            // 1. Force CVRR & CVRC to always form their OWN dedicated top-level card columns:
-            if (str.includes('CVRR')) return 'CVRR STATIONS';
-            if (str.includes('CVRC') || str.includes('CVR')) return 'CVRC STATIONS';
+            // Match floor numbers 1 to 6 across all station formats
+            const floorMatch = str.match(/DZ-P-[AB]?([1-6])\d{3}/i) || 
+                               str.match(/(?:A|B|P|FL|FLOOR)[\-_]?([1-6])/i) ||
+                               str.match(/CVR[RC]?[\-_]?([1-6])/i) ||
+                               str.match(/([1-6])[\-_]?CVR/i) ||
+                               str.match(/([1-6])/);
 
-            // 2. Standard floor matching (A1000 - A6000)
-            const match = str.match(/(?:DZ-P-[AB]|[AB])[\-_]?(?:A|B)?([1-6])/i);
-            if (match && match[1]) {
-                return `DZ-P-A${match[1]}000`;
+            if (floorMatch && floorMatch[1]) {
+                return `DZ-P-A${floorMatch[1]}000`;
             }
 
-            const fallbackDigit = str.match(/([1-6])/);
-            if (fallbackDigit && fallbackDigit[1]) {
-                return `DZ-P-A${fallbackDigit[1]}000`;
+            if (/CVRR|CVRC|CVR|CONVEYOR/i.test(str)) {
+                return 'CVR CONVEYOR STATIONS';
             }
 
             return 'DZ-P-GENERAL';
@@ -324,10 +332,68 @@
             if (!stationName) return 'standard';
             const str = String(stationName).toUpperCase();
 
-            if (str.includes('CVRR')) return 'cvrr';
-            if (str.includes('CVRC') || str.includes('CVR')) return 'cvrc';
-            if (str.includes('BUFFER') || str.includes('-B') || /^B\d/i.test(str) || /^DZ-P-B/i.test(str)) return 'buffer';
+            // 1. CVRR Detection
+            if (/CVRR|CVR[\-_ ]?R|CVR[\-_ ]?REC|REPACK/i.test(str)) {
+                return 'cvrr';
+            }
+
+            // 2. CVRC Detection
+            if (/CVRC|CVR[\-_ ]?C|CVR[\-_ ]?CLR|CVR[\-_ ]?CLEAR/i.test(str)) {
+                return 'cvrc';
+            }
+
+            // 3. General CVR Detection
+            if (/CVR|CONVEYOR/i.test(str)) {
+                return 'cvr';
+            }
+
+            // 4. Buffer Detection
+            if (/BUFFER|[\-_]B\d|^B\d|DZ\-P\-B/i.test(str)) {
+                return 'buffer';
+            }
+
             return 'standard';
+        }
+
+        function addStationEntry(station, qty, containers = []) {
+            if (!station || station === 'UNKNOWN') return;
+
+            const floorKey = extractFloorKey(station);
+            const category = getStationCategory(station);
+
+            if (!accumulatedDataGlobal[floorKey]) {
+                accumulatedDataGlobal[floorKey] = {};
+            }
+
+            if (!accumulatedDataGlobal[floorKey][station]) {
+                accumulatedDataGlobal[floorKey][station] = {
+                    totalQty: 0,
+                    category: category,
+                    totes: new Set(),
+                    skus: new Set()
+                };
+            }
+
+            let stationRef = accumulatedDataGlobal[floorKey][station];
+
+            if (containers.length > 0) {
+                let containerSum = 0;
+                containers.forEach(c => {
+                    if (!c || typeof c !== 'object') return;
+                    const toteId = c.containerId || c.id || c.toteId;
+                    if (toteId) stationRef.totes.add(toteId);
+
+                    const itemsList = Array.isArray(c.items) ? c.items : [];
+                    itemsList.forEach(i => {
+                        if (i && i.sku) stationRef.skus.add(i.sku);
+                    });
+
+                    containerSum += Number(c.qty || c.quantity || 0);
+                });
+                stationRef.totalQty += Math.max(qty, containerSum);
+            } else {
+                stationRef.totalQty += qty;
+            }
         }
 
         function ingestJSON(data) {
@@ -336,73 +402,31 @@
             items.forEach(item => {
                 if (!item || typeof item !== 'object') return;
 
-                const station = item.station || item.stationId || item.location || 'UNKNOWN';
-                const totalQty = Number(item.totalQty || item.quantity || item.unitCount || item.qty || 0);
+                const station = item.station || item.stationId || item.station_id || item.location || item.locationId || item.workstation || item.node || item.stationName || item.name || 'UNKNOWN';
+                const totalQty = Number(item.totalQty || item.quantity || item.unitCount || item.qty || item.count || item.total_qty || item.totalUnits || item.units || 0);
                 const containers = Array.isArray(item.containers) ? item.containers : [];
 
-                const floorKey = extractFloorKey(station);
-                const category = getStationCategory(station);
-
-                if (!accumulatedDataGlobal[floorKey]) {
-                    accumulatedDataGlobal[floorKey] = {};
-                }
-
-                if (!accumulatedDataGlobal[floorKey][station]) {
-                    accumulatedDataGlobal[floorKey][station] = {
-                        totalQty: 0,
-                        category: category,
-                        totes: new Set(),
-                        skus: new Set()
-                    };
-                }
-
-                let stationRef = accumulatedDataGlobal[floorKey][station];
-
-                if (containers.length > 0) {
-                    let containerSum = 0;
-                    containers.forEach(c => {
-                        if (!c || typeof c !== 'object') return;
-
-                        const toteId = c.containerId || c.id || c.toteId;
-                        if (toteId) stationRef.totes.add(toteId);
-
-                        const itemsList = Array.isArray(c.items) ? c.items : [];
-                        itemsList.forEach(i => {
-                            if (i && i.sku) stationRef.skus.add(i.sku);
-                        });
-
-                        containerSum += Number(c.qty || 0);
-                    });
-
-                    stationRef.totalQty += Math.max(totalQty, containerSum);
-                } else {
-                    stationRef.totalQty += totalQty;
-                }
+                addStationEntry(station, totalQty, containers);
             });
         }
 
         function ingestText(text) {
             const lines = text.split('\n');
             lines.forEach(line => {
-                const parts = line.split(/[\t,]+/);
-                if (parts.length >= 2) {
-                    const station = parts[0].trim();
-                    const qty = parseInt(parts[1].trim(), 10) || 0;
-                    if (station) {
-                        const floorKey = extractFloorKey(station);
-                        const category = getStationCategory(station);
+                const trimmed = line.trim();
+                if (!trimmed) return;
 
-                        if (!accumulatedDataGlobal[floorKey]) accumulatedDataGlobal[floorKey] = {};
-                        if (!accumulatedDataGlobal[floorKey][station]) {
-                            accumulatedDataGlobal[floorKey][station] = {
-                                totalQty: 0,
-                                category: category,
-                                totes: new Set(),
-                                skus: new Set()
-                            };
-                        }
-
-                        accumulatedDataGlobal[floorKey][station].totalQty += qty;
+                const match = trimmed.match(/^(.+?)[\t,:\s]+(\d+)$/);
+                if (match) {
+                    const station = match[1].trim();
+                    const qty = parseInt(match[2], 10) || 0;
+                    addStationEntry(station, qty);
+                } else {
+                    const parts = trimmed.split(/[\t,]+/);
+                    if (parts.length >= 2) {
+                        const station = parts[0].trim();
+                        const qty = parseInt(parts[1].trim(), 10) || 0;
+                        if (station) addStationEntry(station, qty);
                     }
                 }
             });
@@ -450,6 +474,8 @@
                 const bufferStations = stationsList.filter(s => s.category === 'buffer');
                 const cvrrStations = stationsList.filter(s => s.category === 'cvrr');
                 const cvrcStations = stationsList.filter(s => s.category === 'cvrc');
+                const cvrGenStations = stationsList.filter(s => s.category === 'cvr');
+                const otherStations = stationsList.filter(s => !['standard','buffer','cvrr','cvrc','cvr'].includes(s.category));
 
                 if (standardStations.length > 0) {
                     const sum = standardStations.reduce((a, b) => a + b.totalQty, 0);
@@ -473,6 +499,18 @@
                     const sum = cvrcStations.reduce((a, b) => a + b.totalQty, 0);
                     colEl.appendChild(createSectionLabel('CVRC Conveyor Stations', sum));
                     cvrcStations.forEach(s => colEl.appendChild(createStationRow(s)));
+                }
+
+                if (cvrGenStations.length > 0) {
+                    const sum = cvrGenStations.reduce((a, b) => a + b.totalQty, 0);
+                    colEl.appendChild(createSectionLabel('General CVR Conveyor Stations', sum));
+                    cvrGenStations.forEach(s => colEl.appendChild(createStationRow(s)));
+                }
+
+                if (otherStations.length > 0) {
+                    const sum = otherStations.reduce((a, b) => a + b.totalQty, 0);
+                    colEl.appendChild(createSectionLabel('Other Stations', sum));
+                    otherStations.forEach(s => colEl.appendChild(createStationRow(s)));
                 }
 
                 container.appendChild(colEl);
@@ -500,6 +538,7 @@
             if (station.category === 'buffer') classType = 'buffer-station';
             else if (station.category === 'cvrr') classType = 'cvrr-station';
             else if (station.category === 'cvrc') classType = 'cvrc-station';
+            else if (station.category === 'cvr') classType = 'cvr-gen-station';
 
             row.className = `station-row ${classType}`;
 
