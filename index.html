@@ -110,7 +110,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             max-height: 75vh;
             overflow-y: auto;
-            display: block; /* Fixed flex shrinking glitch */
+            display: block;
         }
 
         .floor-header {
@@ -154,7 +154,7 @@
             background: #fff;
             cursor: pointer;
             overflow: hidden;
-            min-height: 38px; /* Enforces full row height */
+            min-height: 38px;
             box-sizing: border-box;
         }
 
@@ -302,14 +302,20 @@
             if (!stationName) return 'DZ-P-GENERAL';
             const str = String(stationName).toUpperCase();
 
-            const match = str.match(/(?:DZ-P-[AB]|CVRR?|CVRC?|[AB])[\-_]?(?:A|B)?([1-6])/i) || str.match(/([1-6])/);
+            // 1. Force CVRR & CVRC to always form their OWN dedicated top-level card columns:
+            if (str.includes('CVRR')) return 'CVRR STATIONS';
+            if (str.includes('CVRC') || str.includes('CVR')) return 'CVRC STATIONS';
 
+            // 2. Standard floor matching (A1000 - A6000)
+            const match = str.match(/(?:DZ-P-[AB]|[AB])[\-_]?(?:A|B)?([1-6])/i);
             if (match && match[1]) {
                 return `DZ-P-A${match[1]}000`;
             }
 
-            if (str.includes('CVRR')) return 'CVRR STATIONS';
-            if (str.includes('CVRC')) return 'CVRC STATIONS';
+            const fallbackDigit = str.match(/([1-6])/);
+            if (fallbackDigit && fallbackDigit[1]) {
+                return `DZ-P-A${fallbackDigit[1]}000`;
+            }
 
             return 'DZ-P-GENERAL';
         }
