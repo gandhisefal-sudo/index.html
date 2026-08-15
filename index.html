@@ -93,6 +93,34 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             overflow: hidden;
         }
+
+        /* Floor Banners Above DZ Header */
+        .floor-top-banner {
+            background-color: #0f172a;
+            color: #ffffff;
+            padding: 10px 14px;
+            border-bottom: 2px solid #3b82f6;
+        }
+        .floor-banner-title {
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .dropzone-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .dropzone-chips span {
+            background: rgba(255, 255, 255, 0.15);
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
         .floor-header {
             background-color: #0066c0;
             color: #ffffff;
@@ -198,7 +226,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns with clear visual separation between A and B fields.</p>
+    <p>Paste data tab by tab. Stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns with clear visual separation between A and B fields.</p>
     
     <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
     
@@ -217,8 +245,16 @@
     </div>
 
     <div class="floors-container">
-        <!-- DZ-P-A2000 Column -->
+        <!-- Floor 2 / DZ-P-A2000 Column -->
         <div class="floor-column">
+            <div class="floor-top-banner">
+                <div class="floor-banner-title">Floor 2</div>
+                <div class="dropzone-chips">
+                    <span>cvRC04_INDUCT</span>
+                    <span>cvRC04_P2SOUTH</span>
+                    <span>cvRR_P2</span>
+                </div>
+            </div>
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -234,13 +270,21 @@
                     </tr>
                 </thead>
                 <tbody id="body-A2000">
-                    <tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr>
+                    <tr><td colspan="2" class="no-data-msg">No Floor 2 / A2000 data</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- DZ-P-A3000 Column -->
+        <!-- Floor 3 / DZ-P-A3000 Column -->
         <div class="floor-column">
+            <div class="floor-top-banner">
+                <div class="floor-banner-title">Floor 3</div>
+                <div class="dropzone-chips">
+                    <span>cvRC05_INDUCT</span>
+                    <span>cvRC05_P3SOUTH</span>
+                    <span>cvRR_P3</span>
+                </div>
+            </div>
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -256,13 +300,21 @@
                     </tr>
                 </thead>
                 <tbody id="body-A3000">
-                    <tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr>
+                    <tr><td colspan="2" class="no-data-msg">No Floor 3 / A3000 data</td></tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- DZ-P-A4000 Column -->
+        <!-- Floor 4 / DZ-P-A4000 Column -->
         <div class="floor-column">
+            <div class="floor-top-banner">
+                <div class="floor-banner-title">Floor 4</div>
+                <div class="dropzone-chips">
+                    <span>cvRC06_INDUCT</span>
+                    <span>cvRC06_P4SOUTH</span>
+                    <span>cvRR_P4</span>
+                </div>
+            </div>
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
@@ -278,7 +330,7 @@
                     </tr>
                 </thead>
                 <tbody id="body-A4000">
-                    <tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr>
+                    <tr><td colspan="2" class="no-data-msg">No Floor 4 / A4000 data</td></tr>
                 </tbody>
             </table>
         </div>
@@ -296,9 +348,9 @@
     let expandedStations = new Set();
 
     function getFloorGroup(stationName) {
-        if (/A2|B2/i.test(stationName)) return "A2000";
-        if (/A3|B3/i.test(stationName)) return "A3000";
-        if (/A4|B4/i.test(stationName)) return "A4000";
+        if (/A2|B2|2000|RC04|P2SOUTH|RR_P2/i.test(stationName)) return "A2000";
+        if (/A3|B3|3000|RC05|P3SOUTH|RR_P3/i.test(stationName)) return "A3000";
+        if (/A4|B4|4000|RC06|P4SOUTH|RR_P4/i.test(stationName)) return "A4000";
         return "A2000";
     }
 
@@ -350,7 +402,7 @@
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid DZ-P or BUFFER data rows were identified.");
+            alert("No valid DZ-P, BUFFER, or Floor dropzone data rows were identified.");
         }
     }
 
@@ -379,10 +431,16 @@
         return blocks;
     }
 
+    function isValidStation(station) {
+        if (!station) return false;
+        let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR/i;
+        return matchPattern.test(station);
+    }
+
     function processJsonArray(array, targetMap) {
         array.forEach(item => {
             let station = item.station?.toUpperCase().trim();
-            if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+            if (!isValidStation(station)) return;
             
             if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
             
@@ -404,7 +462,7 @@
                             newContainer.items.forEach(it => {
                                 let itemQty = parseInt(it.qty, 10) || 0;
                                 containerCopy.items.push({ sku: it.sku, qty: itemQty });
-                                containerCopy.qty += itemQty; // Correctly sums item quantities into tote total
+                                containerCopy.qty += itemQty;
                             });
                         } else {
                             containerCopy.qty = parseInt(newContainer.qty, 10) || 0;
@@ -435,7 +493,7 @@
             
             if (parts.length >= 2) {
                 let station = parts[0].trim().toUpperCase();
-                if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+                if (!isValidStation(station)) return;
 
                 let qty = parseInt(parts[1].trim(), 10) || 0;
                 if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
