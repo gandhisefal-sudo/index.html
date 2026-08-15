@@ -80,6 +80,17 @@
             border: 1px solid var(--border);
         }
 
+        .status-banner {
+            display: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .status-banner.success { display: block; background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-banner.error { display: block; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
         .floors-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -195,7 +206,7 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste JSON payload from Tampermonkey copier or station text data here..."></textarea>
+            <textarea id="dataInput" placeholder="Paste data here from Tampermonkey..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
@@ -212,6 +223,7 @@
         </div>
     </div>
 
+    <div id="statusBanner" class="status-banner"></div>
     <div id="floorsContainer" class="floors-container"></div>
 
     <div class="grand-total-bar">
@@ -223,11 +235,19 @@
         let accumulatedDataGlobal = {};
         let expandedStations = new Set();
 
+        function showStatus(message, isError = false) {
+            const banner = document.getElementById('statusBanner');
+            banner.className = `status-banner ${isError ? 'error' : 'success'}`;
+            banner.innerText = message;
+        }
+
         function processData() {
             const rawInput = document.getElementById('dataInput').value.trim();
-            if (!rawInput) return;
+            if (!rawInput) {
+                showStatus("⚠️ Text box is empty. Paste data first.", true);
+                return;
+            }
 
-            // Reset calculation state for clean calculation
             accumulatedDataGlobal = {};
             expandedStations.clear();
 
@@ -236,7 +256,7 @@
                 parsed = JSON.parse(rawInput);
             } catch (e1) {
                 try {
-                    // Clean common JSON trailing commas if present
+                    // Try cleaning up trailing commas or extra spaces
                     let cleaned = rawInput.replace(/,\s*([\]}])/g, '$1');
                     parsed = JSON.parse(cleaned);
                 } catch (e2) {
@@ -255,10 +275,10 @@
 
         function extractFloorKey(stationName) {
             if (!stationName) return 'DZ-P-GENERAL';
-            const name = String(stationName).toUpperCase();
+            const str = String(stationName).toUpperCase();
 
-            // Matches floor digits (1-6) from station patterns (A2, B3, CVRR-A2, CVRR-2)
-            const match = name.match(/(?:[ABP\-]|\bCVR[RC]\b?)([1-6])/i) || name.match(/([1-6])/);
+            // Finds floor digits 1-6 anywhere in station string
+            const match = str.match(/(?:DZ-P-A|DZ-P-B|A|B|CVRR|CVRC)[\-]?([1-6])/i) || str.match(/([1-6])/);
 
             if (match && match[1]) {
                 return `DZ-P-A${match[1]}000`;
@@ -269,9 +289,10 @@
 
         function getStationCategory(stationName) {
             if (!stationName) return 'standard';
-            const name = String(stationName).toUpperCase();
-            if (name.includes('CVRR') || name.includes('CVRC')) return 'cvr';
-            if (name.includes('BUFFER') || /^B/i.test(name) || name.includes('-B')) return 'buffer';
+            const str = String(stationName).toUpperCase();
+
+            if (str.includes('CVRR') || str.includes('CVRC')) return 'cvr';
+            if (str.includes('BUFFER') || str.includes('-B') || /^B\d/i.test(str)) return 'buffer';
             return 'standard';
         }
 
@@ -279,6 +300,8 @@
             const items = Array.isArray(data) ? data : [data];
 
             items.forEach(item => {
+                if (!item || typeof item !== 'object') return;
+
                 const station = item.station || item.stationId || item.location || 'UNKNOWN';
                 const totalQty = Number(item.totalQty || item.quantity || item.unitCount || item.qty || 0);
                 const containers = Array.isArray(item.containers) ? item.containers : [];
@@ -304,12 +327,14 @@
                 if (containers.length > 0) {
                     let containerSum = 0;
                     containers.forEach(c => {
+                        if (!c || typeof c !== 'object') return;
+
                         const toteId = c.containerId || c.id || c.toteId;
                         if (toteId) stationRef.totes.add(toteId);
 
                         const itemsList = Array.isArray(c.items) ? c.items : [];
                         itemsList.forEach(i => {
-                            if (i.sku) stationRef.skus.add(i.sku);
+                            if (i && i.sku) stationRef.skus.add(i.sku);
                         });
 
                         containerSum += Number(c.qty || 0);
@@ -353,6 +378,7 @@
             const container = document.getElementById('floorsContainer');
             container.innerHTML = '';
             let grandTotal = 0;
+            let totalStationsCount = 0;
 
             const sortOption = document.getElementById('sortSelect').value;
             const floorKeys = Object.keys(accumulatedDataGlobal).sort();
@@ -373,6 +399,7 @@
 
                 const floorTotal = stationsList.reduce((sum, s) => sum + s.totalQty, 0);
                 grandTotal += floorTotal;
+                totalStationsCount += stationsList.length;
 
                 const colEl = document.createElement('div');
                 colEl.className = 'floor-column';
@@ -408,6 +435,12 @@
             });
 
             document.getElementById('grandTotalUnits').innerText = `${grandTotal.toLocaleString()} Units`;
+
+            if (totalStationsCount > 0) {
+                showStatus(`✅ Successfully calculated ${totalStationsCount} station(s) across ${floorKeys.length} floor(s) (${grandTotal.toLocaleString()} total units).`);
+            } else {
+                showStatus("⚠️ No valid stations found in the pasted data. Please check what was copied.", true);
+            }
         }
 
         function createSectionLabel(text) {
@@ -438,17 +471,17 @@
 
         function renderStationDetails(station) {
             let html = '';
-            if (station.totes.size > 0) {
+            if (station.totes && station.totes.size > 0) {
                 html += `<div><strong>Totes (${station.totes.size}):</strong><br>`;
                 station.totes.forEach(tote => {
                     html += `<a href="https://fcresearch-eu.aka.amazon.com/search?q=${tote}" target="_blank" class="tote-link">${tote}</a>`;
                 });
                 html += `</div>`;
             }
-            if (station.skus.size > 0) {
+            if (station.skus && station.skus.size > 0) {
                 html += `<div style="margin-top:6px;"><strong>Unique SKUs:</strong> ${station.skus.size}</div>`;
             }
-            if (station.totes.size === 0 && station.skus.size === 0) {
+            if ((!station.totes || station.totes.size === 0) && (!station.skus || station.skus.size === 0)) {
                 html = `<em>No container/SKU breakdown available.</em>`;
             }
             return html;
@@ -467,6 +500,7 @@
             accumulatedDataGlobal = {};
             expandedStations.clear();
             document.getElementById('dataInput').value = '';
+            document.getElementById('statusBanner').className = 'status-banner';
             renderData();
         }
 
@@ -482,7 +516,7 @@
             });
 
             if (csvRows.length <= 1) {
-                alert('No data available to export.');
+                showStatus("⚠️ No calculated data to export.", true);
                 return;
             }
 
