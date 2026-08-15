@@ -3,570 +3,606 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Field Station & Inventory Aggregator</title>
+    <title>3-Column Station Quantity Accumulator</title>
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --bg-color: #f4f6f9;
-            --card-bg: #ffffff;
-            --primary: #232f3e;
-            --accent: #ff9900;
-            --border: #e0e0e0;
-            --text-main: #333333;
-            --buffer-bg: #fff8e6;
-            --cvrr-bg: #e3f2fd;
-            --cvrr-border: #1e88e5;
-            --cvrc-bg: #e8f5e9;
-            --cvrc-border: #43a047;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f6f9;
+            color: #333;
         }
-
-        .header-panel {
-            background: var(--primary);
-            color: white;
-            padding: 20px;
+        .container {
+            max-width: 1450px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-
-        .header-panel h1 { margin: 0 0 10px 0; font-size: 1.5rem; }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 15px;
+        h2 {
+            color: #0066c0;
+            margin-top: 0;
+            border-bottom: 2px solid #e7e9ec;
+            padding-bottom: 10px;
         }
-
         textarea {
             width: 100%;
-            height: 110px;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            box-sizing: border-box;
+            height: 130px;
+            padding: 12px;
+            border: 1px solid #a6a6a6;
+            border-radius: 4px;
             font-family: monospace;
-            resize: vertical;
-            font-size: 13px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            background-color: #fafafa;
         }
-
-        .controls {
+        .btn-group {
+            margin-top: 12px;
             display: flex;
-            flex-wrap: wrap;
             gap: 10px;
-            align-items: center;
         }
-
         button {
-            padding: 10px 16px;
+            padding: 10px 18px;
+            font-size: 0.9rem;
+            font-weight: bold;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: bold;
-            transition: opacity 0.2s;
+            transition: background 0.2s;
         }
-
-        .btn-parse { background-color: var(--accent); color: #111; }
-        .btn-export { background-color: #107c41; color: white; }
-        .btn-clear { background-color: #d9534f; color: white; }
-        button:hover { opacity: 0.9; }
-
-        select {
-            padding: 9px;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-        }
-
-        .status-banner {
-            display: none;
+        .btn-process { background-color: #2cba00; color: white; }
+        .btn-process:hover { background-color: #249700; }
+        .btn-excel { background-color: #107c41; color: white; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-clear { background-color: #a6a6a6; color: white; }
+        .btn-clear:hover { background-color: #8c8c8c; }
+        .sort-section {
+            margin-top: 18px;
+            background: #f7f9fa;
             padding: 10px 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        .status-banner.success { display: block; background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-banner.error { display: block; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-
-        .floors-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 70px;
-            align-items: start;
-        }
-
-        .floor-column {
-            background: var(--card-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            max-height: 75vh;
-            overflow-y: auto;
-        }
-
-        .floor-header {
-            position: sticky;
-            top: -15px;
-            background: var(--card-bg);
-            border-bottom: 2px solid var(--primary);
-            padding: 8px 0;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .floor-title { font-weight: bold; font-size: 1.1rem; color: var(--primary); }
-        .floor-badge { background: #eef2f5; padding: 4px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; }
-
-        .section-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #555;
-            margin: 14px 0 6px 0;
-            font-weight: bold;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 4px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .section-qty-badge {
-            color: #111;
-            font-weight: bold;
-        }
-
-        .station-row {
-            border: 1px solid var(--border);
             border-radius: 4px;
-            margin-bottom: 6px;
+            border: 1px solid #e7e9ec;
+            display: none;
+        }
+        .sort-btn {
             background: #fff;
+            border: 1px solid #a6a6a6;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            color: #333;
+            border-radius: 4px;
+            margin-right: 5px;
             cursor: pointer;
+        }
+        .sort-btn:hover { background: #eef2f5; }
+
+        /* 3-Column Level Grid Layout */
+        .floors-container {
+            display: flex;
+            gap: 18px;
+            margin-top: 20px;
+            align-items: flex-start;
+        }
+        .floor-column {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #dcdfe4;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             overflow: hidden;
         }
-
-        .station-row.buffer-station {
-            background-color: var(--buffer-bg);
-            border-color: #ffe0b2;
-        }
-
-        .station-row.cvrr-station {
-            background-color: var(--cvrr-bg);
-            border-color: #bbdefb;
-            border-left: 4px solid var(--cvrr-border);
-        }
-
-        .station-row.cvrc-station {
-            background-color: var(--cvrc-bg);
-            border-color: #c8e6c9;
-            border-left: 4px solid var(--cvrc-border);
-        }
-
-        .station-summary {
-            padding: 8px 12px;
+        .floor-header {
+            background-color: #0066c0;
+            color: #ffffff;
+            padding: 12px 15px;
+            font-size: 1.05rem;
+            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
-        .station-name { font-weight: 600; font-size: 0.95rem; }
-        .station-qty { font-weight: bold; color: var(--primary); }
-
-        .station-details {
-            display: none;
-            padding: 10px 12px;
-            background: #fafafa;
-            border-top: 1px dashed var(--border);
+        .floor-subtext {
+            font-size: 0.75rem;
+            font-weight: normal;
+            opacity: 0.85;
+            display: block;
+        }
+        .floor-total-badge {
+            background: rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
             font-size: 0.85rem;
+            font-weight: bold;
         }
 
-        .station-details.open { display: block; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e7e9ec;
+            font-size: 0.88rem;
+        }
+        th {
+            background-color: #f7f9fa;
+            color: #555;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+        }
+        
+        /* Section Sub-Header Rows for A/B Separation */
+        .field-subheader {
+            background-color: #eaf2fb;
+            color: #004085;
+            font-weight: bold;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+            border-top: 2px solid #b8daff;
+            border-bottom: 1px solid #b8daff;
+        }
 
-        .tote-link {
-            display: inline-block;
-            margin: 2px 4px 2px 0;
+        .station-row-interactive { cursor: pointer; }
+        .station-row-interactive:hover { background-color: #f0f7fc; }
+        .badge {
+            background-color: #e1f0fc;
+            color: #0066c0;
             padding: 2px 6px;
-            background: #e3f2fd;
-            color: #1565c0;
-            border-radius: 3px;
-            text-decoration: none;
-            font-family: monospace;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+        .nested-row { background-color: #fcfdfe; }
+        .nested-container-box {
+            padding: 10px;
+            border-left: 3px solid #0066c0;
+            background: #f7fafd;
+            margin: 4px 0;
             font-size: 0.8rem;
         }
-
+        .inner-data-table {
+            width: 100%;
+            margin-top: 5px;
+            background: transparent;
+        }
+        .inner-data-table th { background: #edf4fa; padding: 6px; }
+        .inner-data-table td { padding: 6px; background: #fff; }
+        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
         .tote-link:hover { text-decoration: underline; }
-
-        .grand-total-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--primary);
+        .no-data-msg {
+            padding: 20px;
+            text-align: center;
+            color: #888;
+            font-style: italic;
+        }
+        .grand-summary-bar {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2c3e50;
             color: white;
-            padding: 12px 24px;
-            display: flex;
+            border-radius: 6px;
+            display: none;
             justify-content: space-between;
-            align-items: center;
+            font-size: 1.1rem;
             font-weight: bold;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
-            z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-    <div class="header-panel">
-        <h1>Dynamic Field Station Aggregator</h1>
-        <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste station data here from Tampermonkey..."></textarea>
+<div class="container">
+    <h2>📊 Unified 3-Column Accumulator</h2>
+    <p>Paste data tab by tab. Stations automatically sort into <strong>DZ-P-A2000</strong>, <strong>DZ-P-A3000</strong>, or <strong>DZ-P-A4000</strong> columns with clear visual separation between A and B fields.</p>
+    
+    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
+    
+    <div class="btn-group">
+        <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
+        <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
+        <button class="btn-clear" onclick="clearAll()">Reset</button>
+    </div>
+
+    <div id="sortControls" class="sort-section">
+        <strong>Sort Tables:</strong>
+        <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
+        <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
+        <button class="sort-btn" onclick="sortData('qty', 'asc')">Quantity (Low-High)</button>
+    </div>
+
+    <div class="floors-container">
+        <!-- DZ-P-A2000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A2000
+                    <span class="floor-subtext">A2 & B2 Fields</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A2000">
+                    <tr><td colspan="2" class="no-data-msg">No A2000 / B2000 data</td></tr>
+                </tbody>
+            </table>
         </div>
-        <div class="controls">
-            <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
-            <button class="btn-export" onclick="exportToCSV()">Export Excel (CSV)</button>
-            <button class="btn-clear" onclick="clearData()">Clear All Data</button>
-            <label style="margin-left:auto; font-size: 0.9rem;">Sort By: 
-                <select id="sortSelect" onchange="renderData()">
-                    <option value="name-asc">Station Name (A-Z)</option>
-                    <option value="name-desc">Station Name (Z-A)</option>
-                    <option value="qty-desc" selected>Quantity (High-Low)</option>
-                    <option value="qty-asc">Quantity (Low-High)</option>
-                </select>
-            </label>
+
+        <!-- DZ-P-A3000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A3000
+                    <span class="floor-subtext">A3 & B3 Fields</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A3000">
+                    <tr><td colspan="2" class="no-data-msg">No A3000 / B3000 data</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- DZ-P-A4000 Column -->
+        <div class="floor-column">
+            <div class="floor-header">
+                <div>
+                    DZ-P-A4000
+                    <span class="floor-subtext">A4 & B4 Fields</span>
+                </div>
+                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Station Name</th>
+                        <th style="text-align: right;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="body-A4000">
+                    <tr><td colspan="2" class="no-data-msg">No A4000 / B4000 data</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div id="statusBanner" class="status-banner"></div>
-    <div id="floorsContainer" class="floors-container"></div>
-
-    <div class="grand-total-bar">
-        <span>Accumulated System Total</span>
+    <div id="grandSummary" class="grand-summary-bar">
+        <span>GRAND TOTAL ALL COLUMNS:</span>
         <span id="grandTotalUnits">0 Units</span>
     </div>
+</div>
 
-    <script>
-        let accumulatedDataGlobal = {};
-        let expandedStations = new Set();
+<script>
+    let accumulatedDataGlobal = {};
+    let currentSortedList = [];
+    let expandedStations = new Set();
 
-        function showStatus(message, isError = false) {
-            const banner = document.getElementById('statusBanner');
-            banner.className = `status-banner ${isError ? 'error' : 'success'}`;
-            banner.innerText = message;
+    function getFloorGroup(stationName) {
+        if (/A2|B2/i.test(stationName)) return "A2000";
+        if (/A3|B3/i.test(stationName)) return "A3000";
+        if (/A4|B4/i.test(stationName)) return "A4000";
+        return "A2000";
+    }
+
+    function calculateTotals() {
+        let rawText = document.getElementById("inputBox").value;
+        if (!rawText.trim()) {
+            alert("Please paste data into the box first!");
+            return;
         }
 
-        function processData() {
-            const inputEl = document.getElementById('dataInput');
-            const rawInput = inputEl.value.trim();
-            if (!rawInput) {
-                showStatus("⚠️ Text box is empty. Paste data first.", true);
-                return;
-            }
+        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        let parsedSuccessfully = false;
 
-            let parsed = null;
-            try {
-                parsed = JSON.parse(rawInput);
-            } catch (e1) {
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
                 try {
-                    let cleaned = rawInput.replace(/,\s*([\]}])/g, '$1');
-                    parsed = JSON.parse(cleaned);
-                } catch (e2) {
-                    parsed = null;
-                }
-            }
-
-            if (parsed) {
-                ingestJSON(parsed);
-            } else {
-                ingestText(rawInput);
-            }
-
-            inputEl.value = '';
-            renderData();
-        }
-
-        function extractFloorKey(stationName) {
-            if (!stationName) return 'DZ-P-GENERAL';
-            const str = String(stationName).toUpperCase();
-
-            // Extract floor digit (1-6)
-            const match = str.match(/(?:DZ-P-[AB]|CVRR?|CVRC?|[AB])[\-_]?(?:A|B)?([1-6])/i) || str.match(/([1-6])/);
-
-            if (match && match[1]) {
-                return `DZ-P-A${match[1]}000`;
-            }
-
-            if (str.includes('CVRR')) return 'CVRR STATIONS';
-            if (str.includes('CVRC')) return 'CVRC STATIONS';
-
-            return 'DZ-P-GENERAL';
-        }
-
-        function getStationCategory(stationName) {
-            if (!stationName) return 'standard';
-            const str = String(stationName).toUpperCase();
-
-            if (str.includes('CVRR')) return 'cvrr';
-            if (str.includes('CVRC') || str.includes('CVR')) return 'cvrc';
-            if (str.includes('BUFFER') || str.includes('-B') || /^B\d/i.test(str) || /^DZ-P-B/i.test(str)) return 'buffer';
-            return 'standard';
-        }
-
-        function ingestJSON(data) {
-            const items = Array.isArray(data) ? data : [data];
-
-            items.forEach(item => {
-                if (!item || typeof item !== 'object') return;
-
-                const station = item.station || item.stationId || item.location || 'UNKNOWN';
-                const totalQty = Number(item.totalQty || item.quantity || item.unitCount || item.qty || 0);
-                const containers = Array.isArray(item.containers) ? item.containers : [];
-
-                const floorKey = extractFloorKey(station);
-                const category = getStationCategory(station);
-
-                if (!accumulatedDataGlobal[floorKey]) {
-                    accumulatedDataGlobal[floorKey] = {};
-                }
-
-                if (!accumulatedDataGlobal[floorKey][station]) {
-                    accumulatedDataGlobal[floorKey][station] = {
-                        totalQty: 0,
-                        category: category,
-                        totes: new Set(),
-                        skus: new Set()
-                    };
-                }
-
-                let stationRef = accumulatedDataGlobal[floorKey][station];
-
-                if (containers.length > 0) {
-                    let containerSum = 0;
-                    containers.forEach(c => {
-                        if (!c || typeof c !== 'object') return;
-
-                        const toteId = c.containerId || c.id || c.toteId;
-                        if (toteId) stationRef.totes.add(toteId);
-
-                        const itemsList = Array.isArray(c.items) ? c.items : [];
-                        itemsList.forEach(i => {
-                            if (i && i.sku) stationRef.skus.add(i.sku);
-                        });
-
-                        containerSum += Number(c.qty || 0);
-                    });
-
-                    stationRef.totalQty += Math.max(totalQty, containerSum);
-                } else {
-                    stationRef.totalQty += totalQty;
+                    let parsedJson = JSON.parse(block);
+                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+                    processJsonArray(normalizedArray, accumulatedDataGlobal);
+                    parsedSuccessfully = true;
+                } catch (e) {
+                    console.error("JSON parse error", e);
                 }
             });
         }
 
-        function ingestText(text) {
-            const lines = text.split('\n');
-            lines.forEach(line => {
-                const parts = line.split(/[\t,]+/);
-                if (parts.length >= 2) {
-                    const station = parts[0].trim();
-                    const qty = parseInt(parts[1].trim(), 10) || 0;
-                    if (station) {
-                        const floorKey = extractFloorKey(station);
-                        const category = getStationCategory(station);
+        if (!parsedSuccessfully) {
+            processTextFallback(sanitizedText, accumulatedDataGlobal);
+        }
 
-                        if (!accumulatedDataGlobal[floorKey]) accumulatedDataGlobal[floorKey] = {};
-                        if (!accumulatedDataGlobal[floorKey][station]) {
-                            accumulatedDataGlobal[floorKey][station] = {
-                                totalQty: 0,
-                                category: category,
-                                totes: new Set(),
-                                skus: new Set()
-                            };
-                        }
+        currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
+            let itemData = accumulatedDataGlobal[key];
+            let finalStationQty = 0;
+            itemData.containers.forEach(c => { finalStationQty += c.qty; });
 
-                        accumulatedDataGlobal[floorKey][station].totalQty += qty;
+            return { 
+                station: key, 
+                group: getFloorGroup(key),
+                toteCount: itemData.containers.length,
+                qty: finalStationQty, 
+                containers: itemData.containers 
+            };
+        });
+
+        if (currentSortedList.length > 0) {
+            sortData('name', 'asc');
+            document.getElementById("sortControls").style.display = "block";
+            document.getElementById("grandSummary").style.display = "flex";
+            document.getElementById("inputBox").value = ""; 
+        } else {
+            alert("No valid DZ-P or BUFFER data rows were identified.");
+        }
+    }
+
+    function extractTopLevelJSONBlocks(text) {
+        let blocks = [];
+        let bracketCount = 0, braceCount = 0, startIdx = -1, inString = false;
+
+        for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            if (char === '"' && text[i - 1] !== '\\') { inString = !inString; continue; }
+            if (!inString) {
+                if (char === '[' || char === '{') {
+                    if (bracketCount === 0 && braceCount === 0) startIdx = i;
+                    if (char === '[') bracketCount++;
+                    if (char === '{') braceCount++;
+                } else if (char === ']' || char === '}') {
+                    if (char === ']') bracketCount--;
+                    if (char === '}') braceCount--;
+                    if (bracketCount === 0 && braceCount === 0 && startIdx !== -1) {
+                        blocks.push(text.substring(startIdx, i + 1));
+                        startIdx = -1;
                     }
                 }
-            });
-        }
-
-        function renderData() {
-            const container = document.getElementById('floorsContainer');
-            container.innerHTML = '';
-            let grandTotal = 0;
-            let totalStationsCount = 0;
-
-            const sortOption = document.getElementById('sortSelect').value;
-            const floorKeys = Object.keys(accumulatedDataGlobal).sort();
-
-            floorKeys.forEach(floorKey => {
-                const stationsObj = accumulatedDataGlobal[floorKey];
-                let stationsList = Object.keys(stationsObj).map(name => ({
-                    name,
-                    ...stationsObj[name]
-                }));
-
-                stationsList.sort((a, b) => {
-                    if (sortOption === 'name-asc') return a.name.localeCompare(b.name);
-                    if (sortOption === 'name-desc') return b.name.localeCompare(a.name);
-                    if (sortOption === 'qty-desc') return b.totalQty - a.totalQty;
-                    if (sortOption === 'qty-asc') return a.totalQty - b.totalQty;
-                });
-
-                const floorTotal = stationsList.reduce((sum, s) => sum + s.totalQty, 0);
-                grandTotal += floorTotal;
-                totalStationsCount += stationsList.length;
-
-                const colEl = document.createElement('div');
-                colEl.className = 'floor-column';
-
-                const headerEl = document.createElement('div');
-                headerEl.className = 'floor-header';
-                headerEl.innerHTML = `
-                    <span class="floor-title">${floorKey}</span>
-                    <span class="floor-badge">${floorTotal.toLocaleString()} Units</span>
-                `;
-                colEl.appendChild(headerEl);
-
-                const standardStations = stationsList.filter(s => s.category === 'standard');
-                const bufferStations = stationsList.filter(s => s.category === 'buffer');
-                const cvrrStations = stationsList.filter(s => s.category === 'cvrr');
-                const cvrcStations = stationsList.filter(s => s.category === 'cvrc');
-
-                if (standardStations.length > 0) {
-                    const sum = standardStations.reduce((a, b) => a + b.totalQty, 0);
-                    colEl.appendChild(createSectionLabel('Standard Stations (A-Field)', sum));
-                    standardStations.forEach(s => colEl.appendChild(createStationRow(s)));
-                }
-
-                if (bufferStations.length > 0) {
-                    const sum = bufferStations.reduce((a, b) => a + b.totalQty, 0);
-                    colEl.appendChild(createSectionLabel('Buffer Stations (B-Field)', sum));
-                    bufferStations.forEach(s => colEl.appendChild(createStationRow(s)));
-                }
-
-                if (cvrrStations.length > 0) {
-                    const sum = cvrrStations.reduce((a, b) => a + b.totalQty, 0);
-                    colEl.appendChild(createSectionLabel('CVRR Conveyor Stations', sum));
-                    cvrrStations.forEach(s => colEl.appendChild(createStationRow(s)));
-                }
-
-                if (cvrcStations.length > 0) {
-                    const sum = cvrcStations.reduce((a, b) => a + b.totalQty, 0);
-                    colEl.appendChild(createSectionLabel('CVRC Conveyor Stations', sum));
-                    cvrcStations.forEach(s => colEl.appendChild(createStationRow(s)));
-                }
-
-                container.appendChild(colEl);
-            });
-
-            document.getElementById('grandTotalUnits').innerText = `${grandTotal.toLocaleString()} Units`;
-
-            if (totalStationsCount > 0) {
-                showStatus(`✅ Accumulated Total: ${totalStationsCount} station(s) across ${floorKeys.length} column(s) (${grandTotal.toLocaleString()} units).`);
-            } else {
-                showStatus("⚠️ No valid stations found in the pasted data.", true);
             }
         }
+        return blocks;
+    }
 
-        function createSectionLabel(text, totalQty) {
-            const el = document.createElement('div');
-            el.className = 'section-label';
-            el.innerHTML = `<span>${text}</span><span class="section-qty-badge">${totalQty.toLocaleString()} U</span>`;
-            return el;
+    function processJsonArray(array, targetMap) {
+        array.forEach(item => {
+            let station = item.station?.toUpperCase().trim();
+            if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+            
+            if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
+            
+            if (item.containers && Array.isArray(item.containers)) {
+                item.containers.forEach(newContainer => {
+                    let containerIdClean = newContainer.containerId?.trim();
+                    if (!containerIdClean) return;
+
+                    let existingContainer = targetMap[station].containers.find(c => c.containerId === containerIdClean);
+                    
+                    if (!existingContainer) {
+                        let containerCopy = {
+                            containerId: containerIdClean,
+                            qty: 0,
+                            items: []
+                        };
+
+                        if (newContainer.items && Array.isArray(newContainer.items) && newContainer.items.length > 0) {
+                            newContainer.items.forEach(it => {
+                                let itemQty = parseInt(it.qty, 10) || 0;
+                                containerCopy.items.push({ sku: it.sku, qty: itemQty });
+                                containerCopy.qty += itemQty; // Correctly sums item quantities into tote total
+                            });
+                        } else {
+                            containerCopy.qty = parseInt(newContainer.qty, 10) || 0;
+                        }
+
+                        targetMap[station].containers.push(containerCopy);
+                    } else if (newContainer.items && Array.isArray(newContainer.items)) {
+                        newContainer.items.forEach(newSkuItem => {
+                            let existingSku = existingContainer.items.find(s => s.sku === newSkuItem.sku);
+                            let incomingSkuQty = parseInt(newSkuItem.qty, 10) || 0;
+                            if (!existingSku) {
+                                existingContainer.items.push({ sku: newSkuItem.sku, qty: incomingSkuQty });
+                                existingContainer.qty += incomingSkuQty;
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function processTextFallback(rawText, targetMap) {
+        let lines = rawText.split('\n');
+        lines.forEach(line => {
+            if (!line.trim()) return;
+            let parts = line.split(/\t+/);
+            if (parts.length < 2) parts = line.split(/\s{2,}/); 
+            
+            if (parts.length >= 2) {
+                let station = parts[0].trim().toUpperCase();
+                if (!station || (!station.includes("DZ-P") && !station.includes("BUFFER"))) return;
+
+                let qty = parseInt(parts[1].trim(), 10) || 0;
+                if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
+                
+                let fallbackToteId = "MANUAL-PASTE-TOTAL";
+                let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
+                
+                if (!existingContainer) {
+                    targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
+                } else if (existingContainer.qty !== qty) {
+                    existingContainer.qty += qty;
+                }
+            }
+        });
+    }
+
+    function toggleStation(stationName) {
+        if (expandedStations.has(stationName)) expandedStations.delete(stationName);
+        else expandedStations.add(stationName);
+        renderTable();
+    }
+
+    function sortData(type, direction) {
+        if (currentSortedList.length === 0) return;
+        if (type === 'name') {
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.station.localeCompare(b.station) : b.station.localeCompare(a.station));
+        } else if (type === 'qty') {
+            currentSortedList.sort((a, b) => direction === 'asc' ? a.qty - b.qty : b.qty - a.qty);
+        }
+        renderTable();
+    }
+
+    function renderStationRow(tbody, item) {
+        let hasExtraData = item.containers && item.containers.length > 0;
+        let isExpanded = expandedStations.has(item.station);
+        let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+
+        let tr = document.createElement("tr");
+        if (hasExtraData) {
+            tr.className = "station-row-interactive";
+            tr.onclick = () => toggleStation(item.station);
         }
 
-        function createStationRow(station) {
-            const row = document.createElement('div');
-            let classType = '';
-            if (station.category === 'buffer') classType = 'buffer-station';
-            else if (station.category === 'cvrr') classType = 'cvrr-station';
-            else if (station.category === 'cvrc') classType = 'cvrc-station';
+        tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: bold;">
+                ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                ${item.station}
+            </td>
+            <td style="color: #0066c0; font-weight: bold; text-align: right;">
+                ${item.qty}
+                ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
 
-            row.className = `station-row ${classType}`;
+        if (hasExtraData && isExpanded) {
+            let nestedTr = document.createElement("tr");
+            nestedTr.className = "nested-row";
 
-            const isOpen = expandedStations.has(station.name);
-
-            row.innerHTML = `
-                <div class="station-summary" onclick="toggleExpand('${station.name}')">
-                    <span class="station-name">${station.name}</span>
-                    <span class="station-qty">${station.totalQty.toLocaleString()}</span>
-                </div>
-                <div class="station-details ${isOpen ? 'open' : ''}">
-                    ${renderStationDetails(station)}
-                </div>
+            let innerHtmlMarkup = `
+                <td colspan="2">
+                    <div class="nested-container-box">
+                        <strong>📦 Totes Under ${item.station}:</strong>
+                        <table class="inner-data-table">
+                            <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
+                            <tbody>
             `;
-            return row;
-        }
 
-        function renderStationDetails(station) {
-            let html = '';
-            if (station.totes && station.totes.size > 0) {
-                html += `<div><strong>Totes (${station.totes.size}):</strong><br>`;
-                station.totes.forEach(tote => {
-                    html += `<a href="https://fcresearch-eu.aka.amazon.com/search?q=${tote}" target="_blank" class="tote-link">${tote}</a>`;
-                });
-                html += `</div>`;
-            }
-            if (station.skus && station.skus.size > 0) {
-                html += `<div style="margin-top:6px;"><strong>Unique SKUs:</strong> ${station.skus.size}</div>`;
-            }
-            if ((!station.totes || station.totes.size === 0) && (!station.skus || station.skus.size === 0)) {
-                html = `<em>No container/SKU breakdown available.</em>`;
-            }
-            return html;
-        }
+            item.containers.forEach(container => {
+                let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
+                let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
 
-        function toggleExpand(stationName) {
-            if (expandedStations.has(stationName)) {
-                expandedStations.delete(stationName);
-            } else {
-                expandedStations.add(stationName);
-            }
-            renderData();
-        }
-
-        function clearData() {
-            accumulatedDataGlobal = {};
-            expandedStations.clear();
-            document.getElementById('dataInput').value = '';
-            document.getElementById('statusBanner').className = 'status-banner';
-            renderData();
-        }
-
-        function exportToCSV() {
-            let csvRows = ['Floor,Station,Category,Total Units,Totes Count,SKUs Count'];
-
-            Object.keys(accumulatedDataGlobal).forEach(floorKey => {
-                const stationsObj = accumulatedDataGlobal[floorKey];
-                Object.keys(stationsObj).forEach(stationName => {
-                    const s = stationsObj[stationName];
-                    csvRows.push(`"${floorKey}","${stationName}","${s.category.toUpperCase()}",${s.totalQty},${s.totes.size},${s.skus.size}`);
-                });
+                innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
             });
 
-            if (csvRows.length <= 1) {
-                showStatus("⚠️ No calculated data to export.", true);
+            innerHtmlMarkup += `</tbody></table></div></td>`;
+            nestedTr.innerHTML = innerHtmlMarkup;
+            tbody.appendChild(nestedTr);
+        }
+    }
+
+    function renderTable() {
+        let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
+        let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
+        let grandTotal = 0;
+
+        currentSortedList.forEach(item => {
+            let g = item.group;
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(item);
+            groupTotals[g] += item.qty;
+            grandTotal += item.qty;
+        });
+
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            let tbody = document.getElementById(`body-${g}`);
+            document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
+            tbody.innerHTML = "";
+
+            if (groups[g].length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
                 return;
             }
 
-            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('href', url);
-            a.setAttribute('download', 'Floor_Accumulation.csv');
-            a.click();
+            let aFieldItems = groups[g].filter(item => !/DZ-P-B/i.test(item.station));
+            let bFieldItems = groups[g].filter(item => /DZ-P-B/i.test(item.station));
+
+            if (aFieldItems.length > 0) {
+                let floorNum = g.charAt(1);
+                let headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 A${floorNum} STATIONS</td>`;
+                tbody.appendChild(headerTr);
+
+                aFieldItems.forEach(item => renderStationRow(tbody, item));
+            }
+
+            if (bFieldItems.length > 0) {
+                let floorNum = g.charAt(1);
+                let headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 B${floorNum} STATIONS (BUFFER)</td>`;
+                tbody.appendChild(headerTr);
+
+                bFieldItems.forEach(item => renderStationRow(tbody, item));
+            }
+        });
+
+        document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
+    }
+
+    function exportToExcel() {
+        if (currentSortedList.length === 0) {
+            alert("Please process some data first before exporting!");
+            return;
         }
-    </script>
+
+        let excelData = [];
+        currentSortedList.forEach(item => {
+            let fieldType = /DZ-P-B/i.test(item.station) ? "B-Field" : "A-Field";
+            excelData.push({
+                "Group": item.group,
+                "Field Type": fieldType,
+                "Station Name": item.station,
+                "Totes / Containers": item.toteCount,
+                "Aggregated Unit Count": item.qty
+            });
+        });
+
+        let worksheet = XLSX.utils.json_to_sheet(excelData);
+        let workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
+
+        XLSX.writeFile(workbook, "DZ-P_Separated_Field_Accumulation.xlsx");
+    }
+
+    function clearAll() {
+        accumulatedDataGlobal = {};
+        currentSortedList = [];
+        expandedStations.clear();
+        document.getElementById("inputBox").value = "";
+        ['A2000', 'A3000', 'A4000'].forEach(g => {
+            document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+            document.getElementById(`badge-${g}`).innerText = "0 Units";
+        });
+        document.getElementById("sortControls").style.display = "none";
+        document.getElementById("grandSummary").style.display = "none";
+    }
+</script>
+
 </body>
 </html>
