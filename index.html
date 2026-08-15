@@ -226,9 +226,9 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste data tab by tab. Stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns with clear visual separation between A and B fields.</p>
+    <p>Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.</p>
     
-    <textarea id="inputBox" placeholder="Paste station data here..."></textarea>
+    <textarea id="inputBox" placeholder="Paste station/conveyor table data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
@@ -245,7 +245,7 @@
     </div>
 
     <div class="floors-container">
-        <!-- Floor 2 / DZ-P-A2000 Column -->
+        <!-- Floor 2 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 2</div>
@@ -265,7 +265,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Station Name</th>
+                        <th>Station / Dropzone</th>
                         <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
@@ -275,7 +275,7 @@
             </table>
         </div>
 
-        <!-- Floor 3 / DZ-P-A3000 Column -->
+        <!-- Floor 3 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 3</div>
@@ -295,7 +295,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Station Name</th>
+                        <th>Station / Dropzone</th>
                         <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
@@ -305,7 +305,7 @@
             </table>
         </div>
 
-        <!-- Floor 4 / DZ-P-A4000 Column -->
+        <!-- Floor 4 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 4</div>
@@ -325,7 +325,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Station Name</th>
+                        <th>Station / Dropzone</th>
                         <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
@@ -347,10 +347,17 @@
     let currentSortedList = [];
     let expandedStations = new Set();
 
+    function isValidStation(station) {
+        if (!station) return false;
+        let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR|INDUCT|SOUTH/i;
+        return matchPattern.test(station);
+    }
+
     function getFloorGroup(stationName) {
-        if (/A2|B2|2000|RC04|P2SOUTH|RR_P2/i.test(stationName)) return "A2000";
-        if (/A3|B3|3000|RC05|P3SOUTH|RR_P3/i.test(stationName)) return "A3000";
-        if (/A4|B4|4000|RC06|P4SOUTH|RR_P4/i.test(stationName)) return "A4000";
+        let name = stationName.toUpperCase();
+        if (/A2|B2|2000|RC04|P2SOUTH|RR_P2/i.test(name)) return "A2000";
+        if (/A3|B3|3000|RC05|P3SOUTH|RR_P3/i.test(name)) return "A3000";
+        if (/A4|B4|4000|RC06|P4SOUTH|RR_P4/i.test(name)) return "A4000";
         return "A2000";
     }
 
@@ -402,7 +409,7 @@
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid DZ-P, BUFFER, or Floor dropzone data rows were identified.");
+            alert("No valid dropzone or station rows were identified.");
         }
     }
 
@@ -429,12 +436,6 @@
             }
         }
         return blocks;
-    }
-
-    function isValidStation(station) {
-        if (!station) return false;
-        let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR/i;
-        return matchPattern.test(station);
     }
 
     function processJsonArray(array, targetMap) {
@@ -498,12 +499,12 @@
                 let qty = parseInt(parts[1].trim(), 10) || 0;
                 if (!targetMap[station]) targetMap[station] = { qty: 0, containers: [] };
                 
-                let fallbackToteId = "MANUAL-PASTE-TOTAL";
+                let fallbackToteId = "MANUAL-PASTE-ENTRY";
                 let existingContainer = targetMap[station].containers.find(c => c.containerId === fallbackToteId);
                 
                 if (!existingContainer) {
                     targetMap[station].containers.push({ containerId: fallbackToteId, qty: qty, items: [] });
-                } else if (existingContainer.qty !== qty) {
+                } else {
                     existingContainer.qty += qty;
                 }
             }
@@ -529,17 +530,17 @@
     function renderStationRow(tbody, item) {
         let hasExtraData = item.containers && item.containers.length > 0;
         let isExpanded = expandedStations.has(item.station);
-        let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-TOTAL";
+        let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-ENTRY";
 
         let tr = document.createElement("tr");
-        if (hasExtraData) {
+        if (hasExtraData && !isManual) {
             tr.className = "station-row-interactive";
             tr.onclick = () => toggleStation(item.station);
         }
 
         tr.innerHTML = `
             <td style="font-family: monospace; font-weight: bold;">
-                ${hasExtraData ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                ${(hasExtraData && !isManual) ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
                 ${item.station}
             </td>
             <td style="color: #0066c0; font-weight: bold; text-align: right;">
@@ -549,7 +550,7 @@
         `;
         tbody.appendChild(tr);
 
-        if (hasExtraData && isExpanded) {
+        if (hasExtraData && isExpanded && !isManual) {
             let nestedTr = document.createElement("tr");
             nestedTr.className = "nested-row";
 
@@ -564,7 +565,7 @@
 
             item.containers.forEach(container => {
                 let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
-                let cellLabel = isManual ? '📝 Multi-Tab Accumulation' : `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
+                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
 
                 innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
             });
@@ -604,7 +605,7 @@
             if (aFieldItems.length > 0) {
                 let floorNum = g.charAt(1);
                 let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 A${floorNum} STATIONS</td>`;
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} STATIONS & CONVEYORS</td>`;
                 tbody.appendChild(headerTr);
 
                 aFieldItems.forEach(item => renderStationRow(tbody, item));
@@ -613,7 +614,7 @@
             if (bFieldItems.length > 0) {
                 let floorNum = g.charAt(1);
                 let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 B${floorNum} STATIONS (BUFFER)</td>`;
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} BUFFER STATIONS</td>`;
                 tbody.appendChild(headerTr);
 
                 bFieldItems.forEach(item => renderStationRow(tbody, item));
@@ -631,13 +632,12 @@
 
         let excelData = [];
         currentSortedList.forEach(item => {
-            let fieldType = /DZ-P-B/i.test(item.station) ? "B-Field" : "A-Field";
+            let fieldType = /DZ-P-B/i.test(item.station) ? "BUFFER" : "PRIMARY";
             excelData.push({
                 "Group": item.group,
-                "Field Type": fieldType,
-                "Station Name": item.station,
-                "Totes / Containers": item.toteCount,
-                "Aggregated Unit Count": item.qty
+                "Type": fieldType,
+                "Station / Dropzone": item.station,
+                "Count / Units": item.qty
             });
         });
 
@@ -645,7 +645,7 @@
         let workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
 
-        XLSX.writeFile(workbook, "DZ-P_Separated_Field_Accumulation.xlsx");
+        XLSX.writeFile(workbook, "Dropzone_Accumulation.xlsx");
     }
 
     function clearAll() {
