@@ -107,11 +107,10 @@
             border-radius: 8px;
             border: 1px solid var(--border);
             padding: 15px;
-            display: flex;
-            flex-direction: column;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             max-height: 75vh;
             overflow-y: auto;
+            display: block; /* Fixed flex shrinking glitch */
         }
 
         .floor-header {
@@ -155,6 +154,8 @@
             background: #fff;
             cursor: pointer;
             overflow: hidden;
+            min-height: 38px; /* Enforces full row height */
+            box-sizing: border-box;
         }
 
         .station-row.buffer-station {
@@ -179,6 +180,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            min-height: 38px;
+            box-sizing: border-box;
         }
 
         .station-name { font-weight: 600; font-size: 0.95rem; }
@@ -230,7 +233,7 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste station data here from Tampermonkey..."></textarea>
+            <textarea id="dataInput" placeholder="Paste data here from Tab 1..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
@@ -299,7 +302,6 @@
             if (!stationName) return 'DZ-P-GENERAL';
             const str = String(stationName).toUpperCase();
 
-            // Extract floor digit (1-6)
             const match = str.match(/(?:DZ-P-[AB]|CVRR?|CVRC?|[AB])[\-_]?(?:A|B)?([1-6])/i) || str.match(/([1-6])/);
 
             if (match && match[1]) {
@@ -497,15 +499,28 @@
 
             const isOpen = expandedStations.has(station.name);
 
-            row.innerHTML = `
-                <div class="station-summary" onclick="toggleExpand('${station.name}')">
-                    <span class="station-name">${station.name}</span>
-                    <span class="station-qty">${station.totalQty.toLocaleString()}</span>
-                </div>
-                <div class="station-details ${isOpen ? 'open' : ''}">
-                    ${renderStationDetails(station)}
-                </div>
-            `;
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'station-summary';
+            summaryDiv.onclick = () => toggleExpand(station.name);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'station-name';
+            nameSpan.textContent = station.name;
+
+            const qtySpan = document.createElement('span');
+            qtySpan.className = 'station-qty';
+            qtySpan.textContent = station.totalQty.toLocaleString();
+
+            summaryDiv.appendChild(nameSpan);
+            summaryDiv.appendChild(qtySpan);
+
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = `station-details ${isOpen ? 'open' : ''}`;
+            detailsDiv.innerHTML = renderStationDetails(station);
+
+            row.appendChild(summaryDiv);
+            row.appendChild(detailsDiv);
+
             return row;
         }
 
