@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dynamic Field Station & Inventory Aggregator</title>
-    <!-- SheetJS CDN for Excel Export -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --bg-color: #f4f6f9;
@@ -52,6 +50,7 @@
             box-sizing: border-box;
             font-family: monospace;
             resize: vertical;
+            font-size: 13px;
         }
 
         .controls {
@@ -196,11 +195,11 @@
     <div class="header-panel">
         <h1>Dynamic Field Station Aggregator</h1>
         <div class="input-group">
-            <textarea id="dataInput" placeholder="Paste JSON payload from Tampermonkey copier or tab-delimited station data here..."></textarea>
+            <textarea id="dataInput" placeholder="Paste JSON payload from Tampermonkey copier or station text data here..."></textarea>
         </div>
         <div class="controls">
             <button class="btn-parse" onclick="processData()">Parse & Calculate</button>
-            <button class="btn-export" onclick="exportToExcel()">Export Excel</button>
+            <button class="btn-export" onclick="exportToCSV()">Export Excel (CSV)</button>
             <button class="btn-clear" onclick="clearData()">Clear</button>
             <label style="margin-left:auto; font-size: 0.9rem;">Sort By: 
                 <select id="sortSelect" onchange="renderData()">
@@ -228,21 +227,37 @@
             const rawInput = document.getElementById('dataInput').value.trim();
             if (!rawInput) return;
 
+            // Reset calculation state for clean calculation
+            accumulatedDataGlobal = {};
+            expandedStations.clear();
+
+            let parsed = null;
             try {
-                const parsed = JSON.parse(rawInput);
+                parsed = JSON.parse(rawInput);
+            } catch (e1) {
+                try {
+                    // Clean common JSON trailing commas if present
+                    let cleaned = rawInput.replace(/,\s*([\]}])/g, '$1');
+                    parsed = JSON.parse(cleaned);
+                } catch (e2) {
+                    parsed = null;
+                }
+            }
+
+            if (parsed) {
                 ingestJSON(parsed);
-            } catch (e) {
+            } else {
                 ingestText(rawInput);
             }
 
             renderData();
         }
 
-        // Updated Floor Extractor to handle CVRR and CVRC locations cleanly
         function extractFloorKey(stationName) {
-            const name = stationName.toUpperCase();
+            if (!stationName) return 'DZ-P-GENERAL';
+            const name = String(stationName).toUpperCase();
 
-            // Matches floor digits (1-6) after A, B, -, or CVR prefixes (e.g. A2, B3, CVRR-A2, CVRR-2)
+            // Matches floor digits (1-6) from station patterns (A2, B3, CVRR-A2, CVRR-2)
             const match = name.match(/(?:[ABP\-]|\bCVR[RC]\b?)([1-6])/i) || name.match(/([1-6])/);
 
             if (match && match[1]) {
@@ -253,7 +268,8 @@
         }
 
         function getStationCategory(stationName) {
-            const name = stationName.toUpperCase();
+            if (!stationName) return 'standard';
+            const name = String(stationName).toUpperCase();
             if (name.includes('CVRR') || name.includes('CVRC')) return 'cvr';
             if (name.includes('BUFFER') || /^B/i.test(name) || name.includes('-B')) return 'buffer';
             return 'standard';
@@ -285,7 +301,6 @@
 
                 let stationRef = accumulatedDataGlobal[floorKey][station];
 
-                // Process Containers / Totes
                 if (containers.length > 0) {
                     let containerSum = 0;
                     containers.forEach(c => {
@@ -349,7 +364,6 @@
                     ...stationsObj[name]
                 }));
 
-                // Apply Sorting
                 stationsList.sort((a, b) => {
                     if (sortOption === 'name-asc') return a.name.localeCompare(b.name);
                     if (sortOption === 'name-desc') return b.name.localeCompare(a.name);
@@ -371,7 +385,6 @@
                 `;
                 colEl.appendChild(headerEl);
 
-                // Group by categories
                 const standardStations = stationsList.filter(s => s.category === 'standard');
                 const bufferStations = stationsList.filter(s => s.category === 'buffer');
                 const cvrStations = stationsList.filter(s => s.category === 'cvr');
@@ -457,33 +470,28 @@
             renderData();
         }
 
-        function exportToExcel() {
-            const rows = [];
+        function exportToCSV() {
+            let csvRows = ['Floor,Station,Category,Total Units,Totes Count,SKUs Count'];
 
             Object.keys(accumulatedDataGlobal).forEach(floorKey => {
                 const stationsObj = accumulatedDataGlobal[floorKey];
                 Object.keys(stationsObj).forEach(stationName => {
                     const s = stationsObj[stationName];
-                    rows.push({
-                        'Floor': floorKey,
-                        'Station': stationName,
-                        'Category': s.category.toUpperCase(),
-                        'Total Units': s.totalQty,
-                        'Totes Count': s.totes.size,
-                        'SKUs Count': s.skus.size
-                    });
+                    csvRows.push(`"${floorKey}","${stationName}","${s.category.toUpperCase()}",${s.totalQty},${s.totes.size},${s.skus.size}`);
                 });
             });
 
-            if (rows.length === 0) {
+            if (csvRows.length <= 1) {
                 alert('No data available to export.');
                 return;
             }
 
-            const worksheet = XLSX.utils.json_to_sheet(rows);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Floor Accumulation");
-            XLSX.writeFile(workbook, "DZ-P_Separated_Field_Accumulation.xlsx");
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'Floor_Accumulation.csv');
+            a.click();
         }
     </script>
 </body>
