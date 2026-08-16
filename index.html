@@ -7,164 +7,242 @@
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
+        :root {
+            --bg-body: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #0284c7;
+            --primary-hover: #0369a1;
+            
+            /* Theme colors matched to design */
+            --dark-banner-bg: #091322;
+            --dz-header-bg: #0062cc;
+            --conveyor-header-bg: #111c2e;
+            --active-chip-bg: #1d4ed8;
+            --inactive-chip-bg: #1e293b;
+            --subheader-bg: #ebf5ff;
+            --subheader-text: #003875;
+            --count-text: #0d6efd;
+            --badge-bg: #e0f2fe;
+            --badge-text: #0284c7;
+            --border-light: #e2e8f0;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 20px;
-            background-color: #f4f6f9;
-            color: #333;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-body);
+            color: var(--text-main);
         }
+
         .container {
-            max-width: 1450px;
+            max-width: 1550px;
             margin: 0 auto;
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border-light);
         }
+
         h2 {
-            color: #0066c0;
+            color: var(--text-main);
             margin-top: 0;
-            border-bottom: 2px solid #e7e9ec;
-            padding-bottom: 10px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 12px;
         }
+
         textarea {
             width: 100%;
-            height: 130px;
+            height: 110px;
             padding: 12px;
-            border: 1px solid #a6a6a6;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9rem;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88rem;
             box-sizing: border-box;
-            background-color: #fafafa;
+            background-color: #f8fafc;
+            color: #1e293b;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+            background-color: #fff;
+        }
+
         .btn-group {
             margin-top: 12px;
             display: flex;
             gap: 10px;
         }
+
         button {
             padding: 10px 18px;
-            font-size: 0.9rem;
-            font-weight: bold;
+            font-size: 0.88rem;
+            font-weight: 600;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
-        .btn-process { background-color: #2cba00; color: white; }
-        .btn-process:hover { background-color: #249700; }
-        .btn-excel { background-color: #107c41; color: white; }
-        .btn-excel:hover { background-color: #0b5a2f; }
-        .btn-clear { background-color: #a6a6a6; color: white; }
-        .btn-clear:hover { background-color: #8c8c8c; }
+
+        .btn-process { 
+            background: #10b981;
+            color: white; 
+        }
+        .btn-process:hover { background: #059669; }
+
+        .btn-excel { 
+            background: #0284c7; 
+            color: white; 
+        }
+        .btn-excel:hover { background: #0369a1; }
+
+        .btn-clear { 
+            background-color: #64748b; 
+            color: white; 
+        }
+        .btn-clear:hover { background-color: #475569; }
+
         .sort-section {
-            margin-top: 18px;
-            background: #f7f9fa;
-            padding: 10px 15px;
-            border-radius: 4px;
-            border: 1px solid #e7e9ec;
+            margin-top: 16px;
+            background: #f8fafc;
+            padding: 10px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-light);
             display: none;
+            align-items: center;
+            gap: 10px;
         }
+
         .sort-btn {
-            background: #fff;
-            border: 1px solid #a6a6a6;
-            padding: 4px 10px;
-            font-size: 0.85rem;
-            color: #333;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            color: #334155;
             border-radius: 4px;
-            margin-right: 5px;
             cursor: pointer;
+            font-weight: 600;
         }
-        .sort-btn:hover { background: #eef2f5; }
+        .sort-btn:hover { 
+            background: #f1f5f9; 
+            border-color: #94a3b8; 
+            color: var(--primary);
+        }
 
         /* 3-Column Level Grid Layout */
         .floors-container {
             display: flex;
-            gap: 18px;
+            gap: 16px;
             margin-top: 20px;
             align-items: flex-start;
         }
+
         .floor-column {
             flex: 1;
-            background: #fff;
-            border: 1px solid #dcdfe4;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
-        /* Floor Banners Above DZ Header */
+        /* Floor Dark Top Banners */
         .floor-top-banner {
-            background-color: #0f172a;
+            background: var(--dark-banner-bg);
             color: #ffffff;
-            padding: 12px 14px;
-            border-bottom: 2px solid #3b82f6;
+            padding: 16px;
         }
+
         .banner-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
+
         .floor-banner-title {
-            font-size: 1.05rem;
-            font-weight: bold;
+            font-size: 1.25rem;
+            font-weight: 800;
             letter-spacing: 0.5px;
+            color: #ffffff;
             text-transform: uppercase;
         }
+
         .cv-total-badge {
-            background: #334155;
+            background: rgba(14, 165, 233, 0.15);
             color: #38bdf8;
-            border: 1px solid #0284c7;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.78rem;
-            font-weight: bold;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 700;
         }
+
         .dropzone-chips {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 6px;
         }
+
         .dropzone-chips span {
-            background: rgba(255, 255, 255, 0.15);
-            font-size: 0.72rem;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-family: monospace;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--inactive-chip-bg);
             color: #94a3b8;
+            font-size: 0.72rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 600;
         }
+
         .dropzone-chips span.active-chip {
-            background: #2563eb;
-            color: #fff;
-            font-weight: bold;
-            border-color: #60a5fa;
+            background: var(--active-chip-bg);
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .floor-header {
-            background-color: #0066c0;
+            background: var(--dz-header-bg);
             color: #ffffff;
-            padding: 12px 15px;
-            font-size: 1.05rem;
-            font-weight: bold;
+            padding: 14px 16px;
+            font-size: 1.1rem;
+            font-weight: 800;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
         .floor-subtext {
-            font-size: 0.75rem;
-            font-weight: normal;
+            font-size: 0.76rem;
+            font-weight: 400;
             opacity: 0.85;
             display: block;
+            margin-top: 2px;
         }
+
         .floor-total-badge {
-            background: rgba(255,255,255,0.25);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: bold;
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            backdrop-filter: blur(4px);
         }
 
         table {
@@ -172,101 +250,130 @@
             border-collapse: collapse;
             background: #fff;
         }
+
         th, td {
-            padding: 10px 12px;
+            padding: 10px 14px;
             text-align: left;
-            border-bottom: 1px solid #e7e9ec;
-            font-size: 0.88rem;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.85rem;
         }
+
         th {
-            background-color: #f7f9fa;
-            color: #555;
-            font-weight: 600;
-            font-size: 0.78rem;
+            background-color: #ffffff;
+            color: #64748b;
+            font-weight: 700;
+            font-size: 0.75rem;
             text-transform: uppercase;
-        }
-        
-        /* Section Sub-Header Rows */
-        .field-subheader {
-            background-color: #eaf2fb;
-            color: #004085;
-            font-weight: bold;
-            font-size: 0.82rem;
-            letter-spacing: 0.5px;
-            border-top: 2px solid #b8daff;
-            border-bottom: 1px solid #b8daff;
-        }
-        .conveyor-subheader {
-            background-color: #1e293b;
-            color: #f8fafc;
-            font-weight: bold;
-            font-size: 0.82rem;
             letter-spacing: 0.5px;
         }
 
-        .station-row-interactive { cursor: pointer; }
-        .station-row-interactive:hover { background-color: #f0f7fc; }
-        .badge {
-            background-color: #e1f0fc;
-            color: #0066c0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin-left: 4px;
+        /* Section Sub-Header Rows matched to reference design */
+        .field-subheader {
+            background-color: var(--subheader-bg);
+            color: var(--subheader-text);
+            font-weight: 800;
+            font-size: 0.78rem;
+            letter-spacing: 0.5px;
+            border-top: 1px solid #d0e3ff;
+            border-bottom: 1px solid #d0e3ff;
+            padding: 8px 14px;
         }
-        .nested-row { background-color: #fcfdfe; }
+
+        .conveyor-subheader {
+            background-color: var(--conveyor-header-bg);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            padding: 10px 14px;
+        }
+
+        .station-row-interactive { 
+            cursor: pointer; 
+            transition: background 0.15s ease;
+        }
+        .station-row-interactive:hover { background-color: #f8fafc; }
+
+        .badge {
+            background-color: var(--badge-bg);
+            color: var(--badge-text);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+
+        .count-num {
+            color: var(--count-text);
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .nested-row { background-color: #f8fafc; }
         .nested-container-box {
-            padding: 10px;
-            border-left: 3px solid #0066c0;
-            background: #f7fafd;
+            padding: 12px;
+            border-left: 3px solid var(--primary);
+            background: #ffffff;
+            border-radius: 0 6px 6px 0;
             margin: 4px 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
             font-size: 0.8rem;
         }
+
         .inner-data-table {
             width: 100%;
-            margin-top: 5px;
+            margin-top: 8px;
             background: transparent;
         }
-        .inner-data-table th { background: #edf4fa; padding: 6px; }
-        .inner-data-table td { padding: 6px; background: #fff; }
-        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
+
+        .inner-data-table th { background: #f1f5f9; padding: 6px 10px; border-radius: 4px; }
+        .inner-data-table td { padding: 6px 10px; background: #fff; border-bottom: 1px solid #f1f5f9; }
+
+        .tote-link { color: var(--primary); text-decoration: none; font-weight: 600; }
         .tote-link:hover { text-decoration: underline; }
+
         .no-data-msg {
             padding: 20px;
             text-align: center;
-            color: #888;
+            color: var(--text-muted);
             font-style: italic;
+            font-size: 0.85rem;
         }
+
         .grand-summary-bar {
             margin-top: 20px;
-            padding: 15px;
-            background: #0f172a;
+            padding: 16px 24px;
+            background: var(--dark-banner-bg);
             color: white;
-            border-radius: 6px;
+            border-radius: 8px;
             display: none;
             justify-content: space-between;
-            font-size: 1.05rem;
-            font-weight: bold;
+            align-items: center;
+            font-size: 0.98rem;
+            font-weight: 700;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.</p>
+    <h2>⚡ Unified 3-Column Accumulator</h2>
+    <p style="color: var(--text-muted); margin-top: -6px; font-size: 0.88rem;">
+        Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.
+    </p>
     
     <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
     <div class="btn-group">
-        <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
+        <button class="btn-process" onclick="calculateTotals()">⚡ Process & Sum Quantities</button>
         <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
         <button class="btn-clear" onclick="clearAll()">Reset</button>
     </div>
 
     <div id="sortControls" class="sort-section">
-        <strong>Sort Tables:</strong>
+        <strong style="font-size: 0.85rem; color: var(--text-muted);">Sort Tables:</strong>
         <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
         <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
         <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
@@ -278,7 +385,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 2</div>
+                    <div class="floor-banner-title">FLOOR 2</div>
                     <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A2000">
@@ -288,7 +395,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
+            <!-- Conveyors Table -->
             <table id="cv-table-A2000" style="display: none;">
                 <tbody id="cv-body-A2000"></tbody>
             </table>
@@ -299,13 +406,13 @@
                     DZ-P-A2000
                     <span class="floor-subtext">A2 & B2 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A2000">DZ: 0 Units</span>
+                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
+                        <th>STATION / DROPZONE</th>
+                        <th style="text-align: right;">COUNT</th>
                     </tr>
                 </thead>
                 <tbody id="body-A2000">
@@ -318,7 +425,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 3</div>
+                    <div class="floor-banner-title">FLOOR 3</div>
                     <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A3000">
@@ -328,7 +435,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
+            <!-- Conveyors Table -->
             <table id="cv-table-A3000" style="display: none;">
                 <tbody id="cv-body-A3000"></tbody>
             </table>
@@ -339,13 +446,13 @@
                     DZ-P-A3000
                     <span class="floor-subtext">A3 & B3 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A3000">DZ: 0 Units</span>
+                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
+                        <th>STATION / DROPZONE</th>
+                        <th style="text-align: right;">COUNT</th>
                     </tr>
                 </thead>
                 <tbody id="body-A3000">
@@ -358,7 +465,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 4</div>
+                    <div class="floor-banner-title">FLOOR 4</div>
                     <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A4000">
@@ -368,7 +475,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
+            <!-- Conveyors Table -->
             <table id="cv-table-A4000" style="display: none;">
                 <tbody id="cv-body-A4000"></tbody>
             </table>
@@ -379,13 +486,13 @@
                     DZ-P-A4000
                     <span class="floor-subtext">A4 & B4 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A4000">DZ: 0 Units</span>
+                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
+                        <th>STATION / DROPZONE</th>
+                        <th style="text-align: right;">COUNT</th>
                     </tr>
                 </thead>
                 <tbody id="body-A4000">
@@ -398,7 +505,7 @@
     <div id="grandSummary" class="grand-summary-bar">
         <span id="grandTotalCV">Conveyors Total: 0 Units</span>
         <span id="grandTotalDZ">Drop Zones Total: 0 Units</span>
-        <span id="grandTotalUnits" style="color: #4ade80;">TOTAL COMBINED: 0 Units</span>
+        <span id="grandTotalUnits" style="color: #38bdf8;">TOTAL COMBINED: 0 Units</span>
     </div>
 </div>
 
@@ -476,7 +583,7 @@
 
         if (currentSortedList.length > 0) {
             sortData('name', 'asc');
-            document.getElementById("sortControls").style.display = "block";
+            document.getElementById("sortControls").style.display = "flex";
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
@@ -610,12 +717,12 @@
         }
 
         tr.innerHTML = `
-            <td style="font-family: monospace; font-weight: bold;">
-                ${(hasExtraData && !isManual) ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+            <td style="font-weight: 700; color: #0f172a;">
+                ${(hasExtraData && !isManual) ? `<span style="color:#94a3b8; margin-right: 6px; font-size: 0.75rem;">${isExpanded ? '▼' : '▶'}</span>` : ''}
                 ${item.station}
             </td>
-            <td style="color: #0066c0; font-weight: bold; text-align: right;">
-                ${item.qty}
+            <td style="text-align: right;">
+                <span class="count-num">${item.qty}</span>
                 ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
             </td>
         `;
@@ -771,7 +878,7 @@
             document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
             document.getElementById(`cv-body-${g}`).innerHTML = "";
             document.getElementById(`cv-table-${g}`).style.display = "none";
-            document.getElementById(`badge-${g}`).innerText = "DZ: 0 Units";
+            document.getElementById(`badge-${g}`).innerText = "0 Units";
             document.getElementById(`cv-badge-${g}`).innerText = "CV: 0 Units";
             updateTopChips(g, []);
         });
