@@ -98,15 +98,29 @@
         .floor-top-banner {
             background-color: #0f172a;
             color: #ffffff;
-            padding: 10px 14px;
+            padding: 12px 14px;
             border-bottom: 2px solid #3b82f6;
+        }
+        .banner-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .floor-banner-title {
             font-size: 1.05rem;
             font-weight: bold;
             letter-spacing: 0.5px;
-            margin-bottom: 6px;
             text-transform: uppercase;
+        }
+        .cv-total-badge {
+            background: #334155;
+            color: #38bdf8;
+            border: 1px solid #0284c7;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: bold;
         }
         .dropzone-chips {
             display: flex;
@@ -114,17 +128,19 @@
             gap: 4px;
         }
         .dropzone-chips span {
-            background: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.15);
             font-size: 0.72rem;
             padding: 3px 8px;
             border-radius: 3px;
             font-family: monospace;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
         }
         .dropzone-chips span.active-chip {
             background: #2563eb;
             color: #fff;
             font-weight: bold;
+            border-color: #60a5fa;
         }
 
         .floor-header {
@@ -181,7 +197,7 @@
             border-bottom: 1px solid #b8daff;
         }
         .conveyor-subheader {
-            background-color: #334155;
+            background-color: #1e293b;
             color: #f8fafc;
             font-weight: bold;
             font-size: 0.82rem;
@@ -225,12 +241,12 @@
         .grand-summary-bar {
             margin-top: 20px;
             padding: 15px;
-            background: #2c3e50;
+            background: #0f172a;
             color: white;
             border-radius: 6px;
             display: none;
             justify-content: space-between;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: bold;
         }
     </style>
@@ -261,7 +277,10 @@
         <!-- Floor 2 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
-                <div class="floor-banner-title">Floor 2</div>
+                <div class="banner-header-row">
+                    <div class="floor-banner-title">Floor 2</div>
+                    <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
+                </div>
                 <div class="dropzone-chips" id="chips-A2000">
                     <span>cvRC04_INDUCT</span>
                     <span>cvRC04_P2SOUTH</span>
@@ -273,7 +292,7 @@
                     DZ-P-A2000
                     <span class="floor-subtext">A2 & B2 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A2000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
@@ -291,7 +310,10 @@
         <!-- Floor 3 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
-                <div class="floor-banner-title">Floor 3</div>
+                <div class="banner-header-row">
+                    <div class="floor-banner-title">Floor 3</div>
+                    <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
+                </div>
                 <div class="dropzone-chips" id="chips-A3000">
                     <span>cvRC05_INDUCT</span>
                     <span>cvRC05_P3SOUTH</span>
@@ -303,7 +325,7 @@
                     DZ-P-A3000
                     <span class="floor-subtext">A3 & B3 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A3000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
@@ -321,7 +343,10 @@
         <!-- Floor 4 Column -->
         <div class="floor-column">
             <div class="floor-top-banner">
-                <div class="floor-banner-title">Floor 4</div>
+                <div class="banner-header-row">
+                    <div class="floor-banner-title">Floor 4</div>
+                    <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
+                </div>
                 <div class="dropzone-chips" id="chips-A4000">
                     <span>cvRC06_INDUCT</span>
                     <span>cvRC06_P4SOUTH</span>
@@ -333,7 +358,7 @@
                     DZ-P-A4000
                     <span class="floor-subtext">A4 & B4 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A4000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
@@ -350,8 +375,9 @@
     </div>
 
     <div id="grandSummary" class="grand-summary-bar">
-        <span>GRAND TOTAL ALL COLUMNS:</span>
-        <span id="grandTotalUnits">0 Units</span>
+        <span id="grandTotalCV">Conveyors Total: 0 Units</span>
+        <span id="grandTotalDZ">Drop Zones Total: 0 Units</span>
+        <span id="grandTotalUnits" style="color: #4ade80;">TOTAL COMBINED: 0 Units</span>
     </div>
 </div>
 
@@ -447,7 +473,7 @@
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '[') bracketCount++;
+                    if (char === '['5] bracketCount++;
                     if (char === '{') braceCount++;
                 } else if (char === ']' || char === '}') {
                     if (char === ']') bracketCount--;
@@ -616,20 +642,33 @@
 
     function renderTable() {
         let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
-        let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
-        let grandTotal = 0;
+        let dzTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
+        let cvTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
+        
+        let grandDzTotal = 0;
+        let grandCvTotal = 0;
 
         currentSortedList.forEach(item => {
             let g = item.group;
             if (!groups[g]) groups[g] = [];
             groups[g].push(item);
-            groupTotals[g] += item.qty;
-            grandTotal += item.qty;
+
+            if (item.isConveyor) {
+                cvTotals[g] += item.qty;
+                grandCvTotal += item.qty;
+            } else {
+                dzTotals[g] += item.qty;
+                grandDzTotal += item.qty;
+            }
         });
 
         ['A2000', 'A3000', 'A4000'].forEach(g => {
             let tbody = document.getElementById(`body-${g}`);
-            document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
+            
+            // Separate badge assignments
+            document.getElementById(`badge-${g}`).innerText = `${dzTotals[g]} Units`;
+            document.getElementById(`cv-badge-${g}`).innerText = `CV: ${cvTotals[g]} Units`;
+            
             tbody.innerHTML = "";
 
             let conveyorItems = groups[g].filter(item => item.isConveyor);
@@ -667,7 +706,9 @@
             }
         });
 
-        document.getElementById("grandTotalUnits").innerText = `${grandTotal} Units`;
+        document.getElementById("grandTotalCV").innerText = `Conveyors Total: ${grandCvTotal} Units`;
+        document.getElementById("grandTotalDZ").innerText = `Drop Zones Total: ${grandDzTotal} Units`;
+        document.getElementById("grandTotalUnits").innerText = `TOTAL COMBINED: ${grandCvTotal + grandDzTotal} Units`;
     }
 
     function exportToExcel() {
@@ -701,7 +742,8 @@
         document.getElementById("inputBox").value = "";
         ['A2000', 'A3000', 'A4000'].forEach(g => {
             document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
-            document.getElementById(`badge-${g}`).innerText = "0 Units";
+            document.getElementById(`badge-${g}`).innerText = "DZ: 0 Units";
+            document.getElementById(`cv-badge-${g}`).innerText = "CV: 0 Units";
             updateTopChips(g, []);
         });
         document.getElementById("sortControls").style.display = "none";
