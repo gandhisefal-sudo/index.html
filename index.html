@@ -114,11 +114,17 @@
             gap: 4px;
         }
         .dropzone-chips span {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.18);
             font-size: 0.72rem;
-            padding: 2px 6px;
+            padding: 3px 8px;
             border-radius: 3px;
             font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .dropzone-chips span.active-chip {
+            background: #2563eb;
+            color: #fff;
+            font-weight: bold;
         }
 
         .floor-header {
@@ -164,7 +170,7 @@
             text-transform: uppercase;
         }
         
-        /* Section Sub-Header Rows for A/B Separation */
+        /* Section Sub-Header Rows */
         .field-subheader {
             background-color: #eaf2fb;
             color: #004085;
@@ -173,6 +179,13 @@
             letter-spacing: 0.5px;
             border-top: 2px solid #b8daff;
             border-bottom: 1px solid #b8daff;
+        }
+        .conveyor-subheader {
+            background-color: #334155;
+            color: #f8fafc;
+            font-weight: bold;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
         }
 
         .station-row-interactive { cursor: pointer; }
@@ -228,7 +241,7 @@
     <h2>📊 Unified 3-Column Accumulator</h2>
     <p>Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.</p>
     
-    <textarea id="inputBox" placeholder="Paste station/conveyor table data here..."></textarea>
+    <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
@@ -249,7 +262,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 2</div>
-                <div class="dropzone-chips">
+                <div class="dropzone-chips" id="chips-A2000">
                     <span>cvRC04_INDUCT</span>
                     <span>cvRC04_P2SOUTH</span>
                     <span>cvRR_P2</span>
@@ -279,7 +292,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 3</div>
-                <div class="dropzone-chips">
+                <div class="dropzone-chips" id="chips-A3000">
                     <span>cvRC05_INDUCT</span>
                     <span>cvRC05_P3SOUTH</span>
                     <span>cvRR_P3</span>
@@ -309,7 +322,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="floor-banner-title">Floor 4</div>
-                <div class="dropzone-chips">
+                <div class="dropzone-chips" id="chips-A4000">
                     <span>cvRC06_INDUCT</span>
                     <span>cvRC06_P4SOUTH</span>
                     <span>cvRR_P4</span>
@@ -347,17 +360,27 @@
     let currentSortedList = [];
     let expandedStations = new Set();
 
+    const DEFAULT_CONVEYORS = {
+        'A2000': ['cvRC04_INDUCT', 'cvRC04_P2SOUTH', 'cvRR_P2'],
+        'A3000': ['cvRC05_INDUCT', 'cvRC05_P3SOUTH', 'cvRR_P3'],
+        'A4000': ['cvRC06_INDUCT', 'cvRC06_P4SOUTH', 'cvRR_P4']
+    };
+
     function isValidStation(station) {
         if (!station) return false;
-        let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR|INDUCT|SOUTH/i;
+        let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR|INDUCT|SOUTH|CV/i;
         return matchPattern.test(station);
+    }
+
+    function isConveyorStation(stationName) {
+        return /CV|INDUCT|SOUTH|CVRC|CVRR/i.test(stationName) && !/DZ-P/i.test(stationName);
     }
 
     function getFloorGroup(stationName) {
         let name = stationName.toUpperCase();
-        if (/A2|B2|2000|RC04|P2SOUTH|RR_P2/i.test(name)) return "A2000";
-        if (/A3|B3|3000|RC05|P3SOUTH|RR_P3/i.test(name)) return "A3000";
-        if (/A4|B4|4000|RC06|P4SOUTH|RR_P4/i.test(name)) return "A4000";
+        if (/A2|B2|2000|RC04|P2SOUTH|RR_P2|P2/i.test(name)) return "A2000";
+        if (/A3|B3|3000|RC05|P3SOUTH|RR_P3|P3/i.test(name)) return "A3000";
+        if (/A4|B4|4000|RC06|P4SOUTH|RR_P4|P4/i.test(name)) return "A4000";
         return "A2000";
     }
 
@@ -399,7 +422,8 @@
                 group: getFloorGroup(key),
                 toteCount: itemData.containers.length,
                 qty: finalStationQty, 
-                containers: itemData.containers 
+                containers: itemData.containers,
+                isConveyor: isConveyorStation(key)
             };
         });
 
@@ -576,6 +600,20 @@
         }
     }
 
+    function updateTopChips(group, conveyorItems) {
+        let chipContainer = document.getElementById(`chips-${group}`);
+        if (!chipContainer) return;
+
+        let detectedConveyors = conveyorItems.map(c => c.station);
+        let allChips = Array.from(new Set([...DEFAULT_CONVEYORS[group], ...detectedConveyors]));
+
+        chipContainer.innerHTML = allChips.map(chipName => {
+            let active = detectedConveyors.includes(chipName);
+            let qty = active ? conveyorItems.find(c => c.station === chipName)?.qty || 0 : 0;
+            return `<span class="${active ? 'active-chip' : ''}">${chipName}${active ? ` (${qty})` : ''}</span>`;
+        }).join('');
+    }
+
     function renderTable() {
         let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
         let groupTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
@@ -594,29 +632,37 @@
             document.getElementById(`badge-${g}`).innerText = `${groupTotals[g]} Units`;
             tbody.innerHTML = "";
 
+            let conveyorItems = groups[g].filter(item => item.isConveyor);
+            let aFieldItems = groups[g].filter(item => !item.isConveyor && !/DZ-P-B/i.test(item.station));
+            let bFieldItems = groups[g].filter(item => !item.isConveyor && /DZ-P-B/i.test(item.station));
+
+            updateTopChips(g, conveyorItems);
+
             if (groups[g].length === 0) {
                 tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
                 return;
             }
 
-            let aFieldItems = groups[g].filter(item => !/DZ-P-B/i.test(item.station));
-            let bFieldItems = groups[g].filter(item => /DZ-P-B/i.test(item.station));
+            let floorNum = g.charAt(1);
+
+            if (conveyorItems.length > 0) {
+                let headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="2" class="conveyor-subheader">⚡ FLOOR ${floorNum} CONVEYORS & INDUCTS</td>`;
+                tbody.appendChild(headerTr);
+                conveyorItems.forEach(item => renderStationRow(tbody, item));
+            }
 
             if (aFieldItems.length > 0) {
-                let floorNum = g.charAt(1);
                 let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} STATIONS & CONVEYORS</td>`;
+                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} PRIMARY DROP ZONES</td>`;
                 tbody.appendChild(headerTr);
-
                 aFieldItems.forEach(item => renderStationRow(tbody, item));
             }
 
             if (bFieldItems.length > 0) {
-                let floorNum = g.charAt(1);
                 let headerTr = document.createElement("tr");
                 headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} BUFFER STATIONS</td>`;
                 tbody.appendChild(headerTr);
-
                 bFieldItems.forEach(item => renderStationRow(tbody, item));
             }
         });
@@ -632,7 +678,7 @@
 
         let excelData = [];
         currentSortedList.forEach(item => {
-            let fieldType = /DZ-P-B/i.test(item.station) ? "BUFFER" : "PRIMARY";
+            let fieldType = item.isConveyor ? "CONVEYOR" : (/DZ-P-B/i.test(item.station) ? "BUFFER" : "PRIMARY");
             excelData.push({
                 "Group": item.group,
                 "Type": fieldType,
@@ -656,6 +702,7 @@
         ['A2000', 'A3000', 'A4000'].forEach(g => {
             document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
             document.getElementById(`badge-${g}`).innerText = "0 Units";
+            updateTopChips(g, []);
         });
         document.getElementById("sortControls").style.display = "none";
         document.getElementById("grandSummary").style.display = "none";
