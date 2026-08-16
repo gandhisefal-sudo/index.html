@@ -473,7 +473,7 @@
             if (!inString) {
                 if (char === '[' || char === '{') {
                     if (bracketCount === 0 && braceCount === 0) startIdx = i;
-                    if (char === '['5] bracketCount++;
+                    if (char === '[') bracketCount++;
                     if (char === '{') braceCount++;
                 } else if (char === ']' || char === '}') {
                     if (char === ']') bracketCount--;
@@ -665,7 +665,6 @@
         ['A2000', 'A3000', 'A4000'].forEach(g => {
             let tbody = document.getElementById(`body-${g}`);
             
-            // Separate badge assignments
             document.getElementById(`badge-${g}`).innerText = `${dzTotals[g]} Units`;
             document.getElementById(`cv-badge-${g}`).innerText = `CV: ${cvTotals[g]} Units`;
             
