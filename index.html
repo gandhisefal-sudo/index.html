@@ -287,6 +287,13 @@
                     <span>cvRR_P2</span>
                 </div>
             </div>
+
+            <!-- Conveyors Table (Above DZ Header) -->
+            <table id="cv-table-A2000" style="display: none;">
+                <tbody id="cv-body-A2000"></tbody>
+            </table>
+
+            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -320,6 +327,13 @@
                     <span>cvRR_P3</span>
                 </div>
             </div>
+
+            <!-- Conveyors Table (Above DZ Header) -->
+            <table id="cv-table-A3000" style="display: none;">
+                <tbody id="cv-body-A3000"></tbody>
+            </table>
+
+            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -353,6 +367,13 @@
                     <span>cvRR_P4</span>
                 </div>
             </div>
+
+            <!-- Conveyors Table (Above DZ Header) -->
+            <table id="cv-table-A4000" style="display: none;">
+                <tbody id="cv-body-A4000"></tbody>
+            </table>
+
+            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
@@ -663,12 +684,15 @@
         });
 
         ['A2000', 'A3000', 'A4000'].forEach(g => {
-            let tbody = document.getElementById(`body-${g}`);
+            let cvTable = document.getElementById(`cv-table-${g}`);
+            let cvTbody = document.getElementById(`cv-body-${g}`);
+            let dzTbody = document.getElementById(`body-${g}`);
             
             document.getElementById(`badge-${g}`).innerText = `${dzTotals[g]} Units`;
             document.getElementById(`cv-badge-${g}`).innerText = `CV: ${cvTotals[g]} Units`;
             
-            tbody.innerHTML = "";
+            cvTbody.innerHTML = "";
+            dzTbody.innerHTML = "";
 
             let conveyorItems = groups[g].filter(item => item.isConveyor);
             let aFieldItems = groups[g].filter(item => !item.isConveyor && !/DZ-P-B/i.test(item.station));
@@ -676,32 +700,36 @@
 
             updateTopChips(g, conveyorItems);
 
-            if (groups[g].length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
-                return;
-            }
-
             let floorNum = g.charAt(1);
 
+            // Render Conveyors Section (Above DZ Header)
             if (conveyorItems.length > 0) {
+                cvTable.style.display = "table";
                 let headerTr = document.createElement("tr");
                 headerTr.innerHTML = `<td colspan="2" class="conveyor-subheader">⚡ FLOOR ${floorNum} CONVEYORS & INDUCTS</td>`;
-                tbody.appendChild(headerTr);
-                conveyorItems.forEach(item => renderStationRow(tbody, item));
+                cvTbody.appendChild(headerTr);
+                conveyorItems.forEach(item => renderStationRow(cvTbody, item));
+            } else {
+                cvTable.style.display = "none";
             }
 
-            if (aFieldItems.length > 0) {
-                let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} PRIMARY DROP ZONES</td>`;
-                tbody.appendChild(headerTr);
-                aFieldItems.forEach(item => renderStationRow(tbody, item));
-            }
+            // Render Drop Zones Section (Below DZ Header)
+            if (aFieldItems.length === 0 && bFieldItems.length === 0) {
+                dzTbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No Floor ${floorNum} / ${g} data</td></tr>`;
+            } else {
+                if (aFieldItems.length > 0) {
+                    let headerTr = document.createElement("tr");
+                    headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} PRIMARY DROP ZONES</td>`;
+                    dzTbody.appendChild(headerTr);
+                    aFieldItems.forEach(item => renderStationRow(dzTbody, item));
+                }
 
-            if (bFieldItems.length > 0) {
-                let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} BUFFER STATIONS</td>`;
-                tbody.appendChild(headerTr);
-                bFieldItems.forEach(item => renderStationRow(tbody, item));
+                if (bFieldItems.length > 0) {
+                    let headerTr = document.createElement("tr");
+                    headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} BUFFER STATIONS</td>`;
+                    dzTbody.appendChild(headerTr);
+                    bFieldItems.forEach(item => renderStationRow(dzTbody, item));
+                }
             }
         });
 
@@ -741,6 +769,8 @@
         document.getElementById("inputBox").value = "";
         ['A2000', 'A3000', 'A4000'].forEach(g => {
             document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
+            document.getElementById(`cv-body-${g}`).innerHTML = "";
+            document.getElementById(`cv-table-${g}`).style.display = "none";
             document.getElementById(`badge-${g}`).innerText = "DZ: 0 Units";
             document.getElementById(`cv-badge-${g}`).innerText = "CV: 0 Units";
             updateTopChips(g, []);
