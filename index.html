@@ -233,6 +233,19 @@
         }
         .inner-data-table th { background: #edf4fa; padding: 4px; }
         .inner-data-table td { padding: 4px; background: #fff; }
+        
+        /* Container Link Styling */
+        .container-link {
+            color: #0066c0;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .container-link:hover {
+            text-decoration: underline;
+            color: #004b8d;
+        }
+
         .no-data-msg {
             padding: 15px;
             text-align: center;
@@ -277,10 +290,8 @@
     <div class="floors-container">
         <!-- Floor 2 Column -->
         <div class="floor-column">
-            <!-- Dark Top Header Bar -->
             <div class="floor-top-title">Floor 2</div>
 
-            <!-- Middle Conveyor Row (In Between Black and Blue) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
                     <span class="cv-label">Conveyor Summary</span>
@@ -293,7 +304,6 @@
                 </div>
             </div>
 
-            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -334,10 +344,8 @@
 
         <!-- Floor 3 Column -->
         <div class="floor-column">
-            <!-- Dark Top Header Bar -->
             <div class="floor-top-title">Floor 3</div>
 
-            <!-- Middle Conveyor Row (In Between Black and Blue) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
                     <span class="cv-label">Conveyor Summary</span>
@@ -350,7 +358,6 @@
                 </div>
             </div>
 
-            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -391,10 +398,8 @@
 
         <!-- Floor 4 Column -->
         <div class="floor-column">
-            <!-- Dark Top Header Bar -->
             <div class="floor-top-title">Floor 4</div>
 
-            <!-- Middle Conveyor Row (In Between Black and Blue) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
                     <span class="cv-label">Conveyor Summary</span>
@@ -407,7 +412,6 @@
                 </div>
             </div>
 
-            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
@@ -728,12 +732,19 @@
             let nestedTr = document.createElement("tr");
             nestedTr.className = "nested-row";
 
-            let innerRows = item.containers.map(c => `
-                <tr>
-                    <td>${c.containerId}</td>
-                    <td style="text-align: right;">${c.qty}</td>
-                </tr>
-            `).join('');
+            let innerRows = item.containers.map(c => {
+                let url = `https://fc-outbound-app.amazon.com/ts/container?containerId=${encodeURIComponent(c.containerId)}`;
+                return `
+                    <tr>
+                        <td>
+                            <a href="${url}" target="_blank" class="container-link" onclick="event.stopPropagation();">
+                                ${c.containerId}
+                            </a>
+                        </td>
+                        <td style="text-align: right;">${c.qty}</td>
+                    </tr>
+                `;
+            }).join('');
 
             nestedTr.innerHTML = `
                 <td colspan="2">
