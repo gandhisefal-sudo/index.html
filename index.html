@@ -98,29 +98,28 @@
         .floor-top-title {
             background-color: #0f172a;
             color: #ffffff;
-            padding: 10px 14px;
-            font-size: 1.05rem;
+            padding: 12px 16px;
+            font-size: 1.2rem;
             font-weight: bold;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
-        /* Middle Conveyor Section (Between Title and Blue DZ Bar) */
+        /* Middle Conveyor Section (Contains Header, Chips, & Conveyor Table) */
         .floor-cv-banner {
             background-color: #1e293b;
             color: #ffffff;
-            padding: 10px 14px;
+            padding: 12px 14px;
             border-top: 1px solid #334155;
-            border-bottom: 2px solid #3b82f6;
         }
         .banner-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .cv-label {
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             font-weight: bold;
             color: #94a3b8;
             text-transform: uppercase;
@@ -129,24 +128,55 @@
             background: #0f172a;
             color: #38bdf8;
             border: 1px solid #0284c7;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 12px;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: bold;
         }
         .dropzone-chips {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: 6px;
+            margin-bottom: 12px;
         }
         .dropzone-chips span {
             background: rgba(255, 255, 255, 0.1);
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             padding: 3px 8px;
-            border-radius: 3px;
+            border-radius: 4px;
             font-family: monospace;
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: #cbd5e1;
+        }
+
+        /* Conveyor Table Styling inside Dark Banner */
+        .cv-table-wrapper {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .cv-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .cv-table th {
+            background-color: #1e293b;
+            color: #94a3b8;
+            font-size: 0.72rem;
+            padding: 6px 10px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #334155;
+            text-align: left;
+        }
+        .cv-table td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #1e293b;
+            color: #f1f5f9;
+            font-size: 0.82rem;
+        }
+        .cv-table tr:last-child td {
+            border-bottom: none;
         }
 
         /* Blue DZ Header Bar */
@@ -174,32 +204,22 @@
             font-weight: bold;
         }
 
-        /* Side-by-Side Split View Table */
-        .split-tables-wrapper {
-            display: flex;
+        /* Main Dropzone Table Layout */
+        .dz-table-wrapper {
             width: 100%;
-            border-top: 1px solid #e7e9ec;
         }
-        .split-col {
-            flex: 1;
-            box-sizing: border-box;
-        }
-        .split-col:first-child {
-            border-right: 1px solid #e7e9ec;
-        }
-
-        table {
+        table.dz-table {
             width: 100%;
             border-collapse: collapse;
             background: #fff;
         }
-        th, td {
+        table.dz-table th, table.dz-table td {
             padding: 8px 10px;
             text-align: left;
             border-bottom: 1px solid #e7e9ec;
             font-size: 0.82rem;
         }
-        th {
+        table.dz-table th {
             background-color: #f7f9fa;
             color: #555;
             font-weight: 600;
@@ -212,6 +232,15 @@
         .badge {
             background-color: #e1f0fc;
             color: #0066c0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: 4px;
+        }
+        .cv-badge {
+            background-color: #0284c7;
+            color: #ffffff;
             padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.75rem;
@@ -231,8 +260,8 @@
             margin-top: 5px;
             background: transparent;
         }
-        .inner-data-table th { background: #edf4fa; padding: 4px; }
-        .inner-data-table td { padding: 4px; background: #fff; }
+        .inner-data-table th { background: #edf4fa; padding: 4px; color: #333; }
+        .inner-data-table td { padding: 4px; background: #fff; color: #333; }
         
         /* Container Link Styling */
         .container-link {
@@ -245,12 +274,23 @@
             text-decoration: underline;
             color: #004b8d;
         }
+        .container-link-dark {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 600;
+            font-family: monospace;
+        }
+        .container-link-dark:hover {
+            text-decoration: underline;
+            color: #7dd3fc;
+        }
 
         .no-data-msg {
-            padding: 15px;
+            padding: 12px;
             text-align: center;
-            color: #888;
+            color: #64748b;
             font-style: italic;
+            font-size: 0.8rem;
         }
         .grand-summary-bar {
             margin-top: 20px;
@@ -269,7 +309,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station and conveyor data in the text box below. Conveyors and Dropzones will automatically sort into separate side-by-side tables per floor.</p>
+    <p>Paste station and conveyor data in the text box below. Conveyor items display inside the Conveyor Summary banner directly above Dropzones.</p>
     
     <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
@@ -290,11 +330,12 @@
     <div class="floors-container">
         <!-- Floor 2 Column -->
         <div class="floor-column">
-            <div class="floor-top-title">Floor 2</div>
+            <div class="floor-top-title">FLOOR 2</div>
 
+            <!-- Conveyor Section (Middle) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <span class="cv-label">Conveyor Summary</span>
+                    <span class="cv-label">CONVEYOR SUMMARY</span>
                     <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A2000">
@@ -302,8 +343,24 @@
                     <span data-chip="cvRC04_P2SOUTH">cvRC04_P2SOUTH</span>
                     <span data-chip="cvRR_P2">cvRR_P2</span>
                 </div>
+                
+                <!-- Conveyor Table Inside Middle Section -->
+                <div class="cv-table-wrapper">
+                    <table class="cv-table">
+                        <thead>
+                            <tr>
+                                <th>CONVEYOR</th>
+                                <th style="text-align: right;">COUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A2000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
+            <!-- Blue Header Bar (Bottom Section Header) -->
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -312,43 +369,30 @@
                 <span class="floor-total-badge" id="badge-A2000">DZ: 0 Units</span>
             </div>
 
-            <div class="split-tables-wrapper">
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Conveyor</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cv-body-A2000">
-                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Dropzone</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dz-body-A2000">
-                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Dropzone Table -->
+            <div class="dz-table-wrapper">
+                <table class="dz-table">
+                    <thead>
+                        <tr>
+                            <th>DROPZONE</th>
+                            <th style="text-align: right;">COUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dz-body-A2000">
+                        <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <!-- Floor 3 Column -->
         <div class="floor-column">
-            <div class="floor-top-title">Floor 3</div>
+            <div class="floor-top-title">FLOOR 3</div>
 
+            <!-- Conveyor Section (Middle) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <span class="cv-label">Conveyor Summary</span>
+                    <span class="cv-label">CONVEYOR SUMMARY</span>
                     <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A3000">
@@ -356,8 +400,24 @@
                     <span data-chip="cvRC05_P3SOUTH">cvRC05_P3SOUTH</span>
                     <span data-chip="cvRR_P3">cvRR_P3</span>
                 </div>
+
+                <!-- Conveyor Table Inside Middle Section -->
+                <div class="cv-table-wrapper">
+                    <table class="cv-table">
+                        <thead>
+                            <tr>
+                                <th>CONVEYOR</th>
+                                <th style="text-align: right;">COUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A3000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
+            <!-- Blue Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -366,43 +426,30 @@
                 <span class="floor-total-badge" id="badge-A3000">DZ: 0 Units</span>
             </div>
 
-            <div class="split-tables-wrapper">
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Conveyor</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cv-body-A3000">
-                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Dropzone</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dz-body-A3000">
-                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Dropzone Table -->
+            <div class="dz-table-wrapper">
+                <table class="dz-table">
+                    <thead>
+                        <tr>
+                            <th>DROPZONE</th>
+                            <th style="text-align: right;">COUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dz-body-A3000">
+                        <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <!-- Floor 4 Column -->
         <div class="floor-column">
-            <div class="floor-top-title">Floor 4</div>
+            <div class="floor-top-title">FLOOR 4</div>
 
+            <!-- Conveyor Section (Middle) -->
             <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <span class="cv-label">Conveyor Summary</span>
+                    <span class="cv-label">CONVEYOR SUMMARY</span>
                     <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A4000">
@@ -410,8 +457,24 @@
                     <span data-chip="cvRC06_P4SOUTH">cvRC06_P4SOUTH</span>
                     <span data-chip="cvRR_P4">cvRR_P4</span>
                 </div>
+
+                <!-- Conveyor Table Inside Middle Section -->
+                <div class="cv-table-wrapper">
+                    <table class="cv-table">
+                        <thead>
+                            <tr>
+                                <th>CONVEYOR</th>
+                                <th style="text-align: right;">COUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A4000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
+            <!-- Blue Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
@@ -420,33 +483,19 @@
                 <span class="floor-total-badge" id="badge-A4000">DZ: 0 Units</span>
             </div>
 
-            <div class="split-tables-wrapper">
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Conveyor</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cv-body-A4000">
-                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="split-col">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Dropzone</th>
-                                <th style="text-align: right;">Count</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dz-body-A4000">
-                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <!-- Dropzone Table -->
+            <div class="dz-table-wrapper">
+                <table class="dz-table">
+                    <thead>
+                        <tr>
+                            <th>DROPZONE</th>
+                            <th style="text-align: right;">COUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dz-body-A4000">
+                        <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -667,11 +716,11 @@
                 floorTotals[group].cv += item.qty;
                 conveyorCounts[item.station.toUpperCase()] = item.qty;
                 let cvTbody = document.getElementById(`cv-body-${group}`);
-                renderStationRow(cvTbody, item);
+                renderStationRow(cvTbody, item, true);
             } else {
                 floorTotals[group].dz += item.qty;
                 let dzTbody = document.getElementById(`dz-body-${group}`);
-                renderStationRow(dzTbody, item);
+                renderStationRow(dzTbody, item, false);
             }
         });
 
@@ -705,7 +754,7 @@
         document.getElementById("grandTotalUnits").innerText = `TOTAL COMBINED: ${totalCv + totalDz} Units`;
     }
 
-    function renderStationRow(tbody, item) {
+    function renderStationRow(tbody, item, isConveyor) {
         let hasExtraData = item.containers && item.containers.length > 0;
         let isExpanded = expandedStations.has(item.station);
         let isManual = item.containers[0]?.containerId === "MANUAL-PASTE-ENTRY";
@@ -716,14 +765,17 @@
             tr.onclick = () => toggleStation(item.station);
         }
 
+        let qtyColor = isConveyor ? '#38bdf8' : '#0066c0';
+        let badgeClass = isConveyor ? 'cv-badge' : 'badge';
+
         tr.innerHTML = `
             <td style="font-family: monospace; font-weight: bold;">
-                ${(hasExtraData && !isManual) ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+                ${(hasExtraData && !isManual) ? `<span style="color:#94a3b8;">${isExpanded ? '▼' : '►'}</span>` : ''}
                 ${item.station}
             </td>
-            <td style="color: #0066c0; font-weight: bold; text-align: right;">
+            <td style="color: ${qtyColor}; font-weight: bold; text-align: right;">
                 ${item.qty}
-                ${isManual ? '' : `<span class="badge">${item.toteCount}</span>`}
+                ${isManual ? '' : `<span class="${badgeClass}">${item.toteCount}</span>`}
             </td>
         `;
         tbody.appendChild(tr);
@@ -734,10 +786,11 @@
 
             let innerRows = item.containers.map(c => {
                 let url = `https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${encodeURIComponent(c.containerId)}`;
+                let linkClass = isConveyor ? 'container-link-dark' : 'container-link';
                 return `
                     <tr>
                         <td>
-                            <a href="${url}" target="_blank" class="container-link" onclick="event.stopPropagation();">
+                            <a href="${url}" target="_blank" class="${linkClass}" onclick="event.stopPropagation();">
                                 ${c.containerId}
                             </a>
                         </td>
@@ -746,9 +799,13 @@
                 `;
             }).join('');
 
+            let boxBg = isConveyor ? '#1e293b' : '#f7fafd';
+            let boxBorder = isConveyor ? '#38bdf8' : '#0066c0';
+            let textColor = isConveyor ? '#f1f5f9' : '#333';
+
             nestedTr.innerHTML = `
-                <td colspan="2">
-                    <div class="nested-container-box">
+                <td colspan="2" style="background: ${isConveyor ? '#0f172a' : '#fcfdfe'};">
+                    <div class="nested-container-box" style="background: ${boxBg}; border-left-color: ${boxBorder}; color: ${textColor};">
                         <strong>Containers/Totes:</strong>
                         <table class="inner-data-table">
                             <thead>
