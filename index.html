@@ -7,242 +7,164 @@
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --bg-body: #f4f6f9;
-            --card-bg: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --primary: #0284c7;
-            --primary-hover: #0369a1;
-            
-            /* Theme colors matched to design */
-            --dark-banner-bg: #091322;
-            --dz-header-bg: #0062cc;
-            --conveyor-header-bg: #111c2e;
-            --active-chip-bg: #1d4ed8;
-            --inactive-chip-bg: #1e293b;
-            --subheader-bg: #ebf5ff;
-            --subheader-text: #003875;
-            --count-text: #0d6efd;
-            --badge-bg: #e0f2fe;
-            --badge-text: #0284c7;
-            --border-light: #e2e8f0;
-        }
-
         body {
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: var(--bg-body);
-            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f6f9;
+            color: #333;
         }
-
         .container {
-            max-width: 1550px;
+            max-width: 1450px;
             margin: 0 auto;
-            background: var(--card-bg);
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-            border: 1px solid var(--border-light);
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-
         h2 {
-            color: var(--text-main);
+            color: #0066c0;
             margin-top: 0;
-            font-size: 1.4rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 2px solid var(--border-light);
-            padding-bottom: 12px;
+            border-bottom: 2px solid #e7e9ec;
+            padding-bottom: 10px;
         }
-
         textarea {
             width: 100%;
-            height: 110px;
+            height: 130px;
             padding: 12px;
-            border: 2px solid #cbd5e1;
-            border-radius: 8px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.88rem;
+            border: 1px solid #a6a6a6;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
             box-sizing: border-box;
-            background-color: #f8fafc;
-            color: #1e293b;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: #fafafa;
         }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
-            background-color: #fff;
-        }
-
         .btn-group {
             margin-top: 12px;
             display: flex;
             gap: 10px;
         }
-
         button {
             padding: 10px 18px;
-            font-size: 0.88rem;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: bold;
             border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-process { 
-            background: #10b981;
-            color: white; 
-        }
-        .btn-process:hover { background: #059669; }
-
-        .btn-excel { 
-            background: #0284c7; 
-            color: white; 
-        }
-        .btn-excel:hover { background: #0369a1; }
-
-        .btn-clear { 
-            background-color: #64748b; 
-            color: white; 
-        }
-        .btn-clear:hover { background-color: #475569; }
-
-        .sort-section {
-            margin-top: 16px;
-            background: #f8fafc;
-            padding: 10px 16px;
-            border-radius: 6px;
-            border: 1px solid var(--border-light);
-            display: none;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sort-btn {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            padding: 6px 12px;
-            font-size: 0.82rem;
-            color: #334155;
             border-radius: 4px;
             cursor: pointer;
-            font-weight: 600;
+            transition: background 0.2s;
         }
-        .sort-btn:hover { 
-            background: #f1f5f9; 
-            border-color: #94a3b8; 
-            color: var(--primary);
+        .btn-process { background-color: #2cba00; color: white; }
+        .btn-process:hover { background-color: #249700; }
+        .btn-excel { background-color: #107c41; color: white; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-clear { background-color: #a6a6a6; color: white; }
+        .btn-clear:hover { background-color: #8c8c8c; }
+        .sort-section {
+            margin-top: 18px;
+            background: #f7f9fa;
+            padding: 10px 15px;
+            border-radius: 4px;
+            border: 1px solid #e7e9ec;
+            display: none;
         }
+        .sort-btn {
+            background: #fff;
+            border: 1px solid #a6a6a6;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            color: #333;
+            border-radius: 4px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .sort-btn:hover { background: #eef2f5; }
 
         /* 3-Column Level Grid Layout */
         .floors-container {
             display: flex;
-            gap: 16px;
+            gap: 18px;
             margin-top: 20px;
             align-items: flex-start;
         }
-
         .floor-column {
             flex: 1;
-            background: #ffffff;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #dcdfe4;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
-        /* Floor Dark Top Banners */
+        /* Floor Banners Above DZ Header */
         .floor-top-banner {
-            background: var(--dark-banner-bg);
+            background-color: #0f172a;
             color: #ffffff;
-            padding: 16px;
+            padding: 12px 14px;
+            border-bottom: 2px solid #3b82f6;
         }
-
         .banner-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
-
         .floor-banner-title {
-            font-size: 1.25rem;
-            font-weight: 800;
+            font-size: 1.05rem;
+            font-weight: bold;
             letter-spacing: 0.5px;
-            color: #ffffff;
             text-transform: uppercase;
         }
-
         .cv-total-badge {
-            background: rgba(14, 165, 233, 0.15);
+            background: #334155;
             color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.4);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 700;
+            border: 1px solid #0284c7;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: bold;
         }
-
         .dropzone-chips {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
         }
-
         .dropzone-chips span {
-            background: var(--inactive-chip-bg);
-            color: #94a3b8;
+            background: rgba(255, 255, 255, 0.15);
             font-size: 0.72rem;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-family: 'Fira Code', monospace;
-            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #94a3b8;
         }
-
         .dropzone-chips span.active-chip {
-            background: var(--active-chip-bg);
-            color: #ffffff;
-            font-weight: 700;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background: #2563eb;
+            color: #fff;
+            font-weight: bold;
+            border-color: #60a5fa;
         }
 
         .floor-header {
-            background: var(--dz-header-bg);
+            background-color: #0066c0;
             color: #ffffff;
-            padding: 14px 16px;
-            font-size: 1.1rem;
-            font-weight: 800;
+            padding: 12px 15px;
+            font-size: 1.05rem;
+            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
         .floor-subtext {
-            font-size: 0.76rem;
-            font-weight: 400;
+            font-size: 0.75rem;
+            font-weight: normal;
             opacity: 0.85;
             display: block;
-            margin-top: 2px;
         }
-
         .floor-total-badge {
-            background: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 0.88rem;
-            font-weight: 700;
-            backdrop-filter: blur(4px);
+            background: rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
         }
 
         table {
@@ -250,130 +172,101 @@
             border-collapse: collapse;
             background: #fff;
         }
-
         th, td {
-            padding: 10px 14px;
+            padding: 10px 12px;
             text-align: left;
-            border-bottom: 1px solid #e2e8f0;
-            font-size: 0.85rem;
+            border-bottom: 1px solid #e7e9ec;
+            font-size: 0.88rem;
         }
-
         th {
-            background-color: #ffffff;
-            color: #64748b;
-            font-weight: 700;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Section Sub-Header Rows matched to reference design */
-        .field-subheader {
-            background-color: var(--subheader-bg);
-            color: var(--subheader-text);
-            font-weight: 800;
+            background-color: #f7f9fa;
+            color: #555;
+            font-weight: 600;
             font-size: 0.78rem;
-            letter-spacing: 0.5px;
-            border-top: 1px solid #d0e3ff;
-            border-bottom: 1px solid #d0e3ff;
-            padding: 8px 14px;
+            text-transform: uppercase;
         }
-
+        
+        /* Section Sub-Header Rows */
+        .field-subheader {
+            background-color: #eaf2fb;
+            color: #004085;
+            font-weight: bold;
+            font-size: 0.82rem;
+            letter-spacing: 0.5px;
+            border-top: 2px solid #b8daff;
+            border-bottom: 1px solid #b8daff;
+        }
         .conveyor-subheader {
-            background-color: var(--conveyor-header-bg);
-            color: #ffffff;
-            font-weight: 800;
-            font-size: 0.8rem;
+            background-color: #1e293b;
+            color: #f8fafc;
+            font-weight: bold;
+            font-size: 0.82rem;
             letter-spacing: 0.5px;
-            padding: 10px 14px;
         }
 
-        .station-row-interactive { 
-            cursor: pointer; 
-            transition: background 0.15s ease;
-        }
-        .station-row-interactive:hover { background-color: #f8fafc; }
-
+        .station-row-interactive { cursor: pointer; }
+        .station-row-interactive:hover { background-color: #f0f7fc; }
         .badge {
-            background-color: var(--badge-bg);
-            color: var(--badge-text);
-            padding: 3px 10px;
-            border-radius: 12px;
+            background-color: #e1f0fc;
+            color: #0066c0;
+            padding: 2px 6px;
+            border-radius: 4px;
             font-size: 0.75rem;
-            font-weight: 700;
-            margin-left: 8px;
+            font-weight: bold;
+            margin-left: 4px;
         }
-
-        .count-num {
-            color: var(--count-text);
-            font-weight: 800;
-            font-size: 0.95rem;
-        }
-
-        .nested-row { background-color: #f8fafc; }
+        .nested-row { background-color: #fcfdfe; }
         .nested-container-box {
-            padding: 12px;
-            border-left: 3px solid var(--primary);
-            background: #ffffff;
-            border-radius: 0 6px 6px 0;
+            padding: 10px;
+            border-left: 3px solid #0066c0;
+            background: #f7fafd;
             margin: 4px 0;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
             font-size: 0.8rem;
         }
-
         .inner-data-table {
             width: 100%;
-            margin-top: 8px;
+            margin-top: 5px;
             background: transparent;
         }
-
-        .inner-data-table th { background: #f1f5f9; padding: 6px 10px; border-radius: 4px; }
-        .inner-data-table td { padding: 6px 10px; background: #fff; border-bottom: 1px solid #f1f5f9; }
-
-        .tote-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .inner-data-table th { background: #edf4fa; padding: 6px; }
+        .inner-data-table td { padding: 6px; background: #fff; }
+        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
         .tote-link:hover { text-decoration: underline; }
-
         .no-data-msg {
             padding: 20px;
             text-align: center;
-            color: var(--text-muted);
+            color: #888;
             font-style: italic;
-            font-size: 0.85rem;
         }
-
         .grand-summary-bar {
             margin-top: 20px;
-            padding: 16px 24px;
-            background: var(--dark-banner-bg);
+            padding: 15px;
+            background: #0f172a;
             color: white;
-            border-radius: 8px;
+            border-radius: 6px;
             display: none;
             justify-content: space-between;
-            align-items: center;
-            font-size: 0.98rem;
-            font-weight: 700;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+            font-size: 1.05rem;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>⚡ Unified 3-Column Accumulator</h2>
-    <p style="color: var(--text-muted); margin-top: -6px; font-size: 0.88rem;">
-        Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.
-    </p>
+    <h2>📊 Unified 3-Column Accumulator</h2>
+    <p>Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.</p>
     
     <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
     <div class="btn-group">
-        <button class="btn-process" onclick="calculateTotals()">⚡ Process & Sum Quantities</button>
+        <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
         <button class="btn-excel" onclick="exportToExcel()">📊 Export to Excel</button>
         <button class="btn-clear" onclick="clearAll()">Reset</button>
     </div>
 
     <div id="sortControls" class="sort-section">
-        <strong style="font-size: 0.85rem; color: var(--text-muted);">Sort Tables:</strong>
+        <strong>Sort Tables:</strong>
         <button class="sort-btn" onclick="sortData('name', 'asc')">Station (A-Z)</button>
         <button class="sort-btn" onclick="sortData('name', 'desc')">Station (Z-A)</button>
         <button class="sort-btn" onclick="sortData('qty', 'desc')">Quantity (High-Low)</button>
@@ -385,7 +278,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">FLOOR 2</div>
+                    <div class="floor-banner-title">Floor 2</div>
                     <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A2000">
@@ -395,7 +288,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table -->
+            <!-- Conveyors Table (Above DZ Header) -->
             <table id="cv-table-A2000" style="display: none;">
                 <tbody id="cv-body-A2000"></tbody>
             </table>
@@ -406,13 +299,13 @@
                     DZ-P-A2000
                     <span class="floor-subtext">A2 & B2 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A2000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A2000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>STATION / DROPZONE</th>
-                        <th style="text-align: right;">COUNT</th>
+                        <th>Station / Dropzone</th>
+                        <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
                 <tbody id="body-A2000">
@@ -425,7 +318,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">FLOOR 3</div>
+                    <div class="floor-banner-title">Floor 3</div>
                     <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A3000">
@@ -435,7 +328,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table -->
+            <!-- Conveyors Table (Above DZ Header) -->
             <table id="cv-table-A3000" style="display: none;">
                 <tbody id="cv-body-A3000"></tbody>
             </table>
@@ -446,13 +339,13 @@
                     DZ-P-A3000
                     <span class="floor-subtext">A3 & B3 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A3000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A3000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>STATION / DROPZONE</th>
-                        <th style="text-align: right;">COUNT</th>
+                        <th>Station / Dropzone</th>
+                        <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
                 <tbody id="body-A3000">
@@ -465,7 +358,7 @@
         <div class="floor-column">
             <div class="floor-top-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">FLOOR 4</div>
+                    <div class="floor-banner-title">Floor 4</div>
                     <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A4000">
@@ -475,7 +368,7 @@
                 </div>
             </div>
 
-            <!-- Conveyors Table -->
+            <!-- Conveyors Table (Above DZ Header) -->
             <table id="cv-table-A4000" style="display: none;">
                 <tbody id="cv-body-A4000"></tbody>
             </table>
@@ -486,13 +379,13 @@
                     DZ-P-A4000
                     <span class="floor-subtext">A4 & B4 Fields</span>
                 </div>
-                <span class="floor-total-badge" id="badge-A4000">0 Units</span>
+                <span class="floor-total-badge" id="badge-A4000">DZ: 0 Units</span>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>STATION / DROPZONE</th>
-                        <th style="text-align: right;">COUNT</th>
+                        <th>Station / Dropzone</th>
+                        <th style="text-align: right;">Count</th>
                     </tr>
                 </thead>
                 <tbody id="body-A4000">
@@ -505,7 +398,7 @@
     <div id="grandSummary" class="grand-summary-bar">
         <span id="grandTotalCV">Conveyors Total: 0 Units</span>
         <span id="grandTotalDZ">Drop Zones Total: 0 Units</span>
-        <span id="grandTotalUnits" style="color: #38bdf8;">TOTAL COMBINED: 0 Units</span>
+        <span id="grandTotalUnits" style="color: #4ade80;">TOTAL COMBINED: 0 Units</span>
     </div>
 </div>
 
@@ -583,7 +476,7 @@
 
         if (currentSortedList.length > 0) {
             sortData('name', 'asc');
-            document.getElementById("sortControls").style.display = "flex";
+            document.getElementById("sortControls").style.display = "block";
             document.getElementById("grandSummary").style.display = "flex";
             document.getElementById("inputBox").value = ""; 
         } else {
@@ -717,12 +610,12 @@
         }
 
         tr.innerHTML = `
-            <td style="font-weight: 700; color: #0f172a;">
-                ${(hasExtraData && !isManual) ? `<span style="color:#94a3b8; margin-right: 6px; font-size: 0.75rem;">${isExpanded ? '▼' : '▶'}</span>` : ''}
+            <td style="font-family: monospace; font-weight: bold;">
+                ${(hasExtraData && !isManual) ? `<span style="color:#888;">${isExpanded ? '▼' : '▶'}</span>` : ''}
                 ${item.station}
             </td>
-            <td style="text-align: right;">
-                <span class="count-num">${item.qty}</span>
+            <td style="color: #0066c0; font-weight: bold; text-align: right;">
+                ${item.qty}
                 ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
             </td>
         `;
@@ -732,160 +625,4 @@
             let nestedTr = document.createElement("tr");
             nestedTr.className = "nested-row";
 
-            let innerHtmlMarkup = `
-                <td colspan="2">
-                    <div class="nested-container-box">
-                        <strong>📦 Totes Under ${item.station}:</strong>
-                        <table class="inner-data-table">
-                            <thead><tr><th>Tote ID</th><th>SKUs & Qty</th></tr></thead>
-                            <tbody>
-            `;
-
-            item.containers.forEach(container => {
-                let skuDetails = container.items.map(s => `🔹 <strong>${s.sku}</strong> (x${s.qty})`).join('<br>') || `x${container.qty} items`;
-                let cellLabel = `<a href="https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${container.containerId}" target="_blank" class="tote-link" onclick="event.stopPropagation();">🔗 ${container.containerId}</a>`;
-
-                innerHtmlMarkup += `<tr><td>${cellLabel}</td><td>${skuDetails} (Total: ${container.qty})</td></tr>`;
-            });
-
-            innerHtmlMarkup += `</tbody></table></div></td>`;
-            nestedTr.innerHTML = innerHtmlMarkup;
-            tbody.appendChild(nestedTr);
-        }
-    }
-
-    function updateTopChips(group, conveyorItems) {
-        let chipContainer = document.getElementById(`chips-${group}`);
-        if (!chipContainer) return;
-
-        let detectedConveyors = conveyorItems.map(c => c.station);
-        let allChips = Array.from(new Set([...DEFAULT_CONVEYORS[group], ...detectedConveyors]));
-
-        chipContainer.innerHTML = allChips.map(chipName => {
-            let active = detectedConveyors.includes(chipName);
-            let qty = active ? conveyorItems.find(c => c.station === chipName)?.qty || 0 : 0;
-            return `<span class="${active ? 'active-chip' : ''}">${chipName}${active ? ` (${qty})` : ''}</span>`;
-        }).join('');
-    }
-
-    function renderTable() {
-        let groups = { 'A2000': [], 'A3000': [], 'A4000': [] };
-        let dzTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
-        let cvTotals = { 'A2000': 0, 'A3000': 0, 'A4000': 0 };
-        
-        let grandDzTotal = 0;
-        let grandCvTotal = 0;
-
-        currentSortedList.forEach(item => {
-            let g = item.group;
-            if (!groups[g]) groups[g] = [];
-            groups[g].push(item);
-
-            if (item.isConveyor) {
-                cvTotals[g] += item.qty;
-                grandCvTotal += item.qty;
-            } else {
-                dzTotals[g] += item.qty;
-                grandDzTotal += item.qty;
-            }
-        });
-
-        ['A2000', 'A3000', 'A4000'].forEach(g => {
-            let cvTable = document.getElementById(`cv-table-${g}`);
-            let cvTbody = document.getElementById(`cv-body-${g}`);
-            let dzTbody = document.getElementById(`body-${g}`);
-            
-            document.getElementById(`badge-${g}`).innerText = `${dzTotals[g]} Units`;
-            document.getElementById(`cv-badge-${g}`).innerText = `CV: ${cvTotals[g]} Units`;
-            
-            cvTbody.innerHTML = "";
-            dzTbody.innerHTML = "";
-
-            let conveyorItems = groups[g].filter(item => item.isConveyor);
-            let aFieldItems = groups[g].filter(item => !item.isConveyor && !/DZ-P-B/i.test(item.station));
-            let bFieldItems = groups[g].filter(item => !item.isConveyor && /DZ-P-B/i.test(item.station));
-
-            updateTopChips(g, conveyorItems);
-
-            let floorNum = g.charAt(1);
-
-            // Render Conveyors Section (Above DZ Header)
-            if (conveyorItems.length > 0) {
-                cvTable.style.display = "table";
-                let headerTr = document.createElement("tr");
-                headerTr.innerHTML = `<td colspan="2" class="conveyor-subheader">⚡ FLOOR ${floorNum} CONVEYORS & INDUCTS</td>`;
-                cvTbody.appendChild(headerTr);
-                conveyorItems.forEach(item => renderStationRow(cvTbody, item));
-            } else {
-                cvTable.style.display = "none";
-            }
-
-            // Render Drop Zones Section (Below DZ Header)
-            if (aFieldItems.length === 0 && bFieldItems.length === 0) {
-                dzTbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No Floor ${floorNum} / ${g} data</td></tr>`;
-            } else {
-                if (aFieldItems.length > 0) {
-                    let headerTr = document.createElement("tr");
-                    headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} PRIMARY DROP ZONES</td>`;
-                    dzTbody.appendChild(headerTr);
-                    aFieldItems.forEach(item => renderStationRow(dzTbody, item));
-                }
-
-                if (bFieldItems.length > 0) {
-                    let headerTr = document.createElement("tr");
-                    headerTr.innerHTML = `<td colspan="2" class="field-subheader">📍 FLOOR ${floorNum} BUFFER STATIONS</td>`;
-                    dzTbody.appendChild(headerTr);
-                    bFieldItems.forEach(item => renderStationRow(dzTbody, item));
-                }
-            }
-        });
-
-        document.getElementById("grandTotalCV").innerText = `Conveyors Total: ${grandCvTotal} Units`;
-        document.getElementById("grandTotalDZ").innerText = `Drop Zones Total: ${grandDzTotal} Units`;
-        document.getElementById("grandTotalUnits").innerText = `TOTAL COMBINED: ${grandCvTotal + grandDzTotal} Units`;
-    }
-
-    function exportToExcel() {
-        if (currentSortedList.length === 0) {
-            alert("Please process some data first before exporting!");
-            return;
-        }
-
-        let excelData = [];
-        currentSortedList.forEach(item => {
-            let fieldType = item.isConveyor ? "CONVEYOR" : (/DZ-P-B/i.test(item.station) ? "BUFFER" : "PRIMARY");
-            excelData.push({
-                "Group": item.group,
-                "Type": fieldType,
-                "Station / Dropzone": item.station,
-                "Count / Units": item.qty
-            });
-        });
-
-        let worksheet = XLSX.utils.json_to_sheet(excelData);
-        let workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Summary");
-
-        XLSX.writeFile(workbook, "Dropzone_Accumulation.xlsx");
-    }
-
-    function clearAll() {
-        accumulatedDataGlobal = {};
-        currentSortedList = [];
-        expandedStations.clear();
-        document.getElementById("inputBox").value = "";
-        ['A2000', 'A3000', 'A4000'].forEach(g => {
-            document.getElementById(`body-${g}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${g} data</td></tr>`;
-            document.getElementById(`cv-body-${g}`).innerHTML = "";
-            document.getElementById(`cv-table-${g}`).style.display = "none";
-            document.getElementById(`badge-${g}`).innerText = "0 Units";
-            document.getElementById(`cv-badge-${g}`).innerText = "CV: 0 Units";
-            updateTopChips(g, []);
-        });
-        document.getElementById("sortControls").style.display = "none";
-        document.getElementById("grandSummary").style.display = "none";
-    }
-</script>
-
-</body>
-</html>
+            le
