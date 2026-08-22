@@ -105,7 +105,7 @@
             text-transform: uppercase;
         }
 
-        /* Middle Conveyor Section (Contains Header, Chips, & Conveyor Table) */
+        /* Middle Conveyor Section */
         .floor-cv-banner {
             background-color: #1e293b;
             color: #ffffff;
@@ -149,7 +149,7 @@
             color: #cbd5e1;
         }
 
-        /* Conveyor Table Styling inside Dark Banner */
+        /* Fixed Conveyor Table Dark Contrast Styling */
         .cv-table-wrapper {
             background: #0f172a;
             border: 1px solid #334155;
@@ -172,14 +172,28 @@
         .cv-table td {
             padding: 7px 10px;
             border-bottom: 1px solid #1e293b;
-            color: #f1f5f9;
+            color: #f8fafc;
             font-size: 0.82rem;
+            background-color: #0f172a;
         }
         .cv-table tr:last-child td {
             border-bottom: none;
         }
+        
+        /* Dark Theme Hover and Interactive States */
+        .cv-row-interactive { 
+            cursor: pointer; 
+        }
+        .cv-row-interactive td {
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+        }
+        .cv-row-interactive:hover td { 
+            background-color: #1e293b !important; 
+            color: #ffffff !important;
+        }
 
-        /* Blue DZ Header Bar */
+        /* Blue Header Bar (Bottom Section Header) */
         .floor-header {
             background-color: #0066c0;
             color: #ffffff;
@@ -204,7 +218,7 @@
             font-weight: bold;
         }
 
-        /* Main Dropzone Table Layout */
+        /* Dropzone Table Layout */
         .dz-table-wrapper {
             width: 100%;
         }
@@ -228,7 +242,9 @@
         }
 
         .station-row-interactive { cursor: pointer; }
-        .station-row-interactive:hover { background-color: #f0f7fc; }
+        .station-row-interactive:hover td { background-color: #f0f7fc; }
+        
+        /* Badges */
         .badge {
             background-color: #e1f0fc;
             color: #0066c0;
@@ -247,6 +263,7 @@
             font-weight: bold;
             margin-left: 4px;
         }
+        
         .nested-row { background-color: #fcfdfe; }
         .nested-container-box {
             padding: 8px;
@@ -263,27 +280,38 @@
         .inner-data-table th { background: #edf4fa; padding: 4px; color: #333; }
         .inner-data-table td { padding: 4px; background: #fff; color: #333; }
         
-        /* Container Link Styling */
+        /* Dark Inner Data Table */
+        .cv-nested-box {
+            padding: 8px;
+            border-left: 3px solid #0284c7;
+            background: #1e293b;
+            margin: 2px 0;
+            font-size: 0.78rem;
+            color: #f1f5f9;
+        }
+        .cv-inner-table {
+            width: 100%;
+            margin-top: 5px;
+            background: transparent;
+        }
+        .cv-inner-table th { background: #334155; padding: 4px; color: #94a3b8; }
+        .cv-inner-table td { padding: 4px; background: #0f172a; color: #f8fafc; }
+        
+        /* Links */
         .container-link {
             color: #0066c0;
             text-decoration: none;
             font-weight: 600;
             font-family: monospace;
         }
-        .container-link:hover {
-            text-decoration: underline;
-            color: #004b8d;
-        }
+        .container-link:hover { text-decoration: underline; color: #004b8d; }
         .container-link-dark {
             color: #38bdf8;
             text-decoration: none;
             font-weight: 600;
             font-family: monospace;
         }
-        .container-link-dark:hover {
-            text-decoration: underline;
-            color: #7dd3fc;
-        }
+        .container-link-dark:hover { text-decoration: underline; color: #7dd3fc; }
 
         .no-data-msg {
             padding: 12px;
@@ -761,7 +789,7 @@
 
         let tr = document.createElement("tr");
         if (hasExtraData && !isManual) {
-            tr.className = "station-row-interactive";
+            tr.className = isConveyor ? "cv-row-interactive" : "station-row-interactive";
             tr.onclick = () => toggleStation(item.station);
         }
 
@@ -770,7 +798,7 @@
 
         tr.innerHTML = `
             <td style="font-family: monospace; font-weight: bold;">
-                ${(hasExtraData && !isManual) ? `<span style="color:#94a3b8;">${isExpanded ? '▼' : '►'}</span>` : ''}
+                ${(hasExtraData && !isManual) ? `<span style="color:${isConveyor ? '#94a3b8' : '#64748b'};">${isExpanded ? '▼' : '►'}</span>` : ''}
                 ${item.station}
             </td>
             <td style="color: ${qtyColor}; font-weight: bold; text-align: right;">
@@ -799,15 +827,14 @@
                 `;
             }).join('');
 
-            let boxBg = isConveyor ? '#1e293b' : '#f7fafd';
-            let boxBorder = isConveyor ? '#38bdf8' : '#0066c0';
-            let textColor = isConveyor ? '#f1f5f9' : '#333';
+            let boxClass = isConveyor ? 'cv-nested-box' : 'nested-container-box';
+            let tableClass = isConveyor ? 'cv-inner-table' : 'inner-data-table';
 
             nestedTr.innerHTML = `
-                <td colspan="2" style="background: ${isConveyor ? '#0f172a' : '#fcfdfe'};">
-                    <div class="nested-container-box" style="background: ${boxBg}; border-left-color: ${boxBorder}; color: ${textColor};">
+                <td colspan="2" style="background: ${isConveyor ? '#0f172a' : '#fcfdfe'}; padding: 4px;">
+                    <div class="${boxClass}">
                         <strong>Containers/Totes:</strong>
-                        <table class="inner-data-table">
+                        <table class="${tableClass}">
                             <thead>
                                 <tr><th>Container ID</th><th style="text-align: right;">Qty</th></tr>
                             </thead>
