@@ -27,19 +27,27 @@
             border-bottom: 2px solid #e7e9ec;
             padding-bottom: 10px;
         }
+        label {
+            display: block;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            color: #444;
+        }
         textarea {
             width: 100%;
-            height: 130px;
-            padding: 12px;
+            height: 90px;
+            padding: 10px;
             border: 1px solid #a6a6a6;
             border-radius: 4px;
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             box-sizing: border-box;
             background-color: #fafafa;
         }
         .btn-group {
-            margin-top: 12px;
+            margin-top: 15px;
             display: flex;
             gap: 10px;
         }
@@ -229,9 +237,13 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste table data directly. Conveyors & stations automatically sort into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong> dropzone columns.</p>
+    <p>Paste Conveyors and Dropzone data into their respective inputs below. Data automatically sorts into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong>.</p>
     
-    <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
+    <label for="inputBoxCV">Conveyor Data (CV):</label>
+    <textarea id="inputBoxCV" placeholder="Paste CV Conveyor JSON / Table data here..."></textarea>
+
+    <label for="inputBoxDZ">Dropzone Data (DZ):</label>
+    <textarea id="inputBoxDZ" placeholder="Paste DZ Station JSON / Table data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
@@ -363,12 +375,6 @@
     let currentSortedList = [];
     let expandedStations = new Set();
 
-    const DEFAULT_CONVEYORS = {
-        'A2000': ['CVRC04_INDUCT', 'CVRC04_P2SOUTH', 'CVRR_P2'],
-        'A3000': ['CVRC05_INDUCT', 'CVRC05_P3SOUTH', 'CVRR_P3'],
-        'A4000': ['CVRC06_INDUCT', 'CVRC06_P4SOUTH', 'CVRR_P4']
-    };
-
     function isValidStation(station) {
         if (!station) return false;
         let matchPattern = /DZ-P|BUFFER|DZ_A|CVRC|CVRR|INDUCT|SOUTH|CV/i;
@@ -388,32 +394,19 @@
     }
 
     function calculateTotals() {
-        let rawText = document.getElementById("inputBox").value;
-        if (!rawText.trim()) {
-            alert("Please paste data into the box first!");
+        accumulatedDataGlobal = {};
+        currentSortedList = [];
+
+        let cvText = document.getElementById("inputBoxCV").value.trim();
+        let dzText = document.getElementById("inputBoxDZ").value.trim();
+
+        if (!cvText && !dzText) {
+            alert("Please paste data into at least one input box!");
             return;
         }
 
-        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
-        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        let parsedSuccessfully = false;
-
-        if (jsonBlocks.length > 0) {
-            jsonBlocks.forEach(block => {
-                try {
-                    let parsedJson = JSON.parse(block);
-                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
-                    processJsonArray(normalizedArray, accumulatedDataGlobal);
-                    parsedSuccessfully = true;
-                } catch (e) {
-                    console.error("JSON parse error", e);
-                }
-            });
-        }
-
-        if (!parsedSuccessfully) {
-            processTextFallback(sanitizedText, accumulatedDataGlobal);
-        }
+        if (cvText) processRawInput(cvText);
+        if (dzText) processRawInput(dzText);
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
@@ -434,9 +427,31 @@
             sortData('name', 'asc');
             document.getElementById("sortControls").style.display = "block";
             document.getElementById("grandSummary").style.display = "flex";
-            document.getElementById("inputBox").value = ""; 
         } else {
-            alert("No valid dropzone or station rows were identified.");
+            alert("No valid dropzone or conveyor rows were identified.");
+        }
+    }
+
+    function processRawInput(rawText) {
+        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        let parsedSuccessfully = false;
+
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
+                try {
+                    let parsedJson = JSON.parse(block);
+                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+                    processJsonArray(normalizedArray, accumulatedDataGlobal);
+                    parsedSuccessfully = true;
+                } catch (e) {
+                    console.error("JSON parse error", e);
+                }
+            });
+        }
+
+        if (!parsedSuccessfully) {
+            processTextFallback(sanitizedText, accumulatedDataGlobal);
         }
     }
 
@@ -675,12 +690,13 @@
         accumulatedDataGlobal = {};
         currentSortedList = [];
         expandedStations.clear();
-        document.getElementById("inputBox").value = "";
+        document.getElementById("inputBoxCV").value = "";
+        document.getElementById("inputBoxDZ").value = "";
         document.getElementById("sortControls").style.display = "none";
         document.getElementById("grandSummary").style.display = "none";
 
         ['A2000', 'A3000', 'A4000'].forEach(group => {
-            document.getElementById(`body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} data</td></tr>`;
+            document.getElementById(`body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} Dropzone data</td></tr>`;
             document.getElementById(`badge-${group}`).innerText = `DZ: 0 Units`;
             document.getElementById(`cv-badge-${group}`).innerText = `CV: 0 Units`;
 
