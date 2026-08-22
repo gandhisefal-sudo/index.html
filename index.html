@@ -733,7 +733,7 @@
             nestedTr.className = "nested-row";
 
             let innerRows = item.containers.map(c => {
-                let url = `https://fc-outbound-app.amazon.com/ts/container?containerId=${encodeURIComponent(c.containerId)}`;
+                let url = `https://fcresearch-eu.aka.amazon.com/LCY2/results?s=${encodeURIComponent(c.containerId)}`;
                 return `
                     <tr>
                         <td>
