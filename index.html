@@ -337,7 +337,7 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste station and conveyor data in the text box below. Conveyor items display inside the Conveyor Summary banner directly above Dropzones.</p>
+    <p>Paste station and conveyor data in the text box below. Multiple pastes will accumulate automatically.</p>
     
     <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
@@ -559,10 +559,8 @@
     }
 
     function calculateTotals() {
-        accumulatedDataGlobal = {};
-        currentSortedList = [];
-
-        let rawText = document.getElementById("inputBox").value.trim();
+        let inputEl = document.getElementById("inputBox");
+        let rawText = inputEl.value.trim();
 
         if (!rawText) {
             alert("Please paste data into the text box!");
@@ -589,6 +587,9 @@
         if (!parsedSuccessfully) {
             processTextFallback(sanitizedText, accumulatedDataGlobal);
         }
+
+        // Auto-clear input field so next paste is ready
+        inputEl.value = "";
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
