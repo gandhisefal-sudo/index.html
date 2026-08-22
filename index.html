@@ -94,26 +94,39 @@
             overflow: hidden;
         }
 
-        .floor-top-banner {
+        /* Top Title Header */
+        .floor-top-title {
             background-color: #0f172a;
             color: #ffffff;
-            padding: 12px 14px;
+            padding: 10px 14px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Middle Conveyor Section (Between Title and Blue DZ Bar) */
+        .floor-cv-banner {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 10px 14px;
+            border-top: 1px solid #334155;
             border-bottom: 2px solid #3b82f6;
         }
         .banner-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
-        .floor-banner-title {
-            font-size: 1.05rem;
+        .cv-label {
+            font-size: 0.82rem;
             font-weight: bold;
-            letter-spacing: 0.5px;
+            color: #94a3b8;
             text-transform: uppercase;
         }
         .cv-total-badge {
-            background: #334155;
+            background: #0f172a;
             color: #38bdf8;
             border: 1px solid #0284c7;
             padding: 2px 8px;
@@ -127,15 +140,16 @@
             gap: 4px;
         }
         .dropzone-chips span {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             font-size: 0.72rem;
             padding: 3px 8px;
             border-radius: 3px;
             font-family: monospace;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #94a3b8;
+            color: #cbd5e1;
         }
 
+        /* Blue DZ Header Bar */
         .floor-header {
             background-color: #0066c0;
             color: #ffffff;
@@ -160,7 +174,7 @@
             font-weight: bold;
         }
 
-        /* Split View Table Container */
+        /* Side-by-Side Split View Table */
         .split-tables-wrapper {
             display: flex;
             width: 100%;
@@ -263,9 +277,13 @@
     <div class="floors-container">
         <!-- Floor 2 Column -->
         <div class="floor-column">
-            <div class="floor-top-banner">
+            <!-- Dark Top Header Bar -->
+            <div class="floor-top-title">Floor 2</div>
+
+            <!-- Middle Conveyor Row (In Between Black and Blue) -->
+            <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 2</div>
+                    <span class="cv-label">Conveyor Summary</span>
                     <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A2000">
@@ -275,6 +293,7 @@
                 </div>
             </div>
 
+            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -315,9 +334,13 @@
 
         <!-- Floor 3 Column -->
         <div class="floor-column">
-            <div class="floor-top-banner">
+            <!-- Dark Top Header Bar -->
+            <div class="floor-top-title">Floor 3</div>
+
+            <!-- Middle Conveyor Row (In Between Black and Blue) -->
+            <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 3</div>
+                    <span class="cv-label">Conveyor Summary</span>
                     <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A3000">
@@ -327,6 +350,7 @@
                 </div>
             </div>
 
+            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -367,9 +391,13 @@
 
         <!-- Floor 4 Column -->
         <div class="floor-column">
-            <div class="floor-top-banner">
+            <!-- Dark Top Header Bar -->
+            <div class="floor-top-title">Floor 4</div>
+
+            <!-- Middle Conveyor Row (In Between Black and Blue) -->
+            <div class="floor-cv-banner">
                 <div class="banner-header-row">
-                    <div class="floor-banner-title">Floor 4</div>
+                    <span class="cv-label">Conveyor Summary</span>
                     <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A4000">
@@ -379,6 +407,7 @@
                 </div>
             </div>
 
+            <!-- Blue DZ Header Bar -->
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
