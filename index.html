@@ -136,12 +136,6 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: #94a3b8;
         }
-        .dropzone-chips span.active-chip {
-            background: #2563eb;
-            color: #fff;
-            font-weight: bold;
-            border-color: #60a5fa;
-        }
 
         .floor-header {
             background-color: #0066c0;
@@ -185,24 +179,6 @@
             font-size: 0.78rem;
             text-transform: uppercase;
         }
-        
-        /* Section Sub-Header Rows */
-        .field-subheader {
-            background-color: #eaf2fb;
-            color: #004085;
-            font-weight: bold;
-            font-size: 0.82rem;
-            letter-spacing: 0.5px;
-            border-top: 2px solid #b8daff;
-            border-bottom: 1px solid #b8daff;
-        }
-        .conveyor-subheader {
-            background-color: #1e293b;
-            color: #f8fafc;
-            font-weight: bold;
-            font-size: 0.82rem;
-            letter-spacing: 0.5px;
-        }
 
         .station-row-interactive { cursor: pointer; }
         .station-row-interactive:hover { background-color: #f0f7fc; }
@@ -230,8 +206,6 @@
         }
         .inner-data-table th { background: #edf4fa; padding: 6px; }
         .inner-data-table td { padding: 6px; background: #fff; }
-        .tote-link { color: #0066c0; text-decoration: none; font-weight: bold; }
-        .tote-link:hover { text-decoration: underline; }
         .no-data-msg {
             padding: 20px;
             text-align: center;
@@ -282,18 +256,12 @@
                     <span class="cv-total-badge" id="cv-badge-A2000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A2000">
-                    <span>cvRC04_INDUCT</span>
-                    <span>cvRC04_P2SOUTH</span>
-                    <span>cvRR_P2</span>
+                    <span data-chip="cvRC04_INDUCT">cvRC04_INDUCT</span>
+                    <span data-chip="cvRC04_P2SOUTH">cvRC04_P2SOUTH</span>
+                    <span data-chip="cvRR_P2">cvRR_P2</span>
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
-            <table id="cv-table-A2000" style="display: none;">
-                <tbody id="cv-body-A2000"></tbody>
-            </table>
-
-            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A2000
@@ -322,18 +290,12 @@
                     <span class="cv-total-badge" id="cv-badge-A3000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A3000">
-                    <span>cvRC05_INDUCT</span>
-                    <span>cvRC05_P3SOUTH</span>
-                    <span>cvRR_P3</span>
+                    <span data-chip="cvRC05_INDUCT">cvRC05_INDUCT</span>
+                    <span data-chip="cvRC05_P3SOUTH">cvRC05_P3SOUTH</span>
+                    <span data-chip="cvRR_P3">cvRR_P3</span>
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
-            <table id="cv-table-A3000" style="display: none;">
-                <tbody id="cv-body-A3000"></tbody>
-            </table>
-
-            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A3000
@@ -362,18 +324,12 @@
                     <span class="cv-total-badge" id="cv-badge-A4000">CV: 0 Units</span>
                 </div>
                 <div class="dropzone-chips" id="chips-A4000">
-                    <span>cvRC06_INDUCT</span>
-                    <span>cvRC06_P4SOUTH</span>
-                    <span>cvRR_P4</span>
+                    <span data-chip="cvRC06_INDUCT">cvRC06_INDUCT</span>
+                    <span data-chip="cvRC06_P4SOUTH">cvRC06_P4SOUTH</span>
+                    <span data-chip="cvRR_P4">cvRR_P4</span>
                 </div>
             </div>
 
-            <!-- Conveyors Table (Above DZ Header) -->
-            <table id="cv-table-A4000" style="display: none;">
-                <tbody id="cv-body-A4000"></tbody>
-            </table>
-
-            <!-- DZ Header & Table -->
             <div class="floor-header">
                 <div>
                     DZ-P-A4000
@@ -408,9 +364,9 @@
     let expandedStations = new Set();
 
     const DEFAULT_CONVEYORS = {
-        'A2000': ['cvRC04_INDUCT', 'cvRC04_P2SOUTH', 'cvRR_P2'],
-        'A3000': ['cvRC05_INDUCT', 'cvRC05_P3SOUTH', 'cvRR_P3'],
-        'A4000': ['cvRC06_INDUCT', 'cvRC06_P4SOUTH', 'cvRR_P4']
+        'A2000': ['CVRC04_INDUCT', 'CVRC04_P2SOUTH', 'CVRR_P2'],
+        'A3000': ['CVRC05_INDUCT', 'CVRC05_P3SOUTH', 'CVRR_P3'],
+        'A4000': ['CVRC06_INDUCT', 'CVRC06_P4SOUTH', 'CVRR_P4']
     };
 
     function isValidStation(station) {
@@ -598,6 +554,52 @@
         renderTable();
     }
 
+    function renderTable() {
+        ['A2000', 'A3000', 'A4000'].forEach(group => {
+            document.getElementById(`body-${group}`).innerHTML = '';
+        });
+
+        let floorTotals = { A2000: { dz: 0, cv: 0 }, A3000: { dz: 0, cv: 0 }, A4000: { dz: 0, cv: 0 } };
+        let conveyorCounts = {};
+
+        currentSortedList.forEach(item => {
+            let group = item.group;
+            
+            if (item.isConveyor) {
+                floorTotals[group].cv += item.qty;
+                conveyorCounts[item.station.toUpperCase()] = item.qty;
+            } else {
+                floorTotals[group].dz += item.qty;
+                let tbody = document.getElementById(`body-${group}`);
+                renderStationRow(tbody, item);
+            }
+        });
+
+        ['A2000', 'A3000', 'A4000'].forEach(group => {
+            let tbody = document.getElementById(`body-${group}`);
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} Dropzone data</td></tr>`;
+            }
+
+            document.getElementById(`badge-${group}`).innerText = `DZ: ${floorTotals[group].dz} Units`;
+            document.getElementById(`cv-badge-${group}`).innerText = `CV: ${floorTotals[group].cv} Units`;
+
+            let chipContainer = document.getElementById(`chips-${group}`);
+            chipContainer.querySelectorAll('span').forEach(span => {
+                let code = span.getAttribute('data-chip').toUpperCase();
+                let count = conveyorCounts[code] || 0;
+                span.innerText = `${span.getAttribute('data-chip')} (${count})`;
+            });
+        });
+
+        let totalCv = floorTotals.A2000.cv + floorTotals.A3000.cv + floorTotals.A4000.cv;
+        let totalDz = floorTotals.A2000.dz + floorTotals.A3000.dz + floorTotals.A4000.dz;
+
+        document.getElementById("grandTotalCV").innerText = `Conveyors Total: ${totalCv} Units`;
+        document.getElementById("grandTotalDZ").innerText = `Drop Zones Total: ${totalDz} Units`;
+        document.getElementById("grandTotalUnits").innerText = `TOTAL COMBINED: ${totalCv + totalDz} Units`;
+    }
+
     function renderStationRow(tbody, item) {
         let hasExtraData = item.containers && item.containers.length > 0;
         let isExpanded = expandedStations.has(item.station);
@@ -625,4 +627,70 @@
             let nestedTr = document.createElement("tr");
             nestedTr.className = "nested-row";
 
-            le
+            let innerRows = item.containers.map(c => `
+                <tr>
+                    <td>${c.containerId}</td>
+                    <td style="text-align: right;">${c.qty}</td>
+                </tr>
+            `).join('');
+
+            nestedTr.innerHTML = `
+                <td colspan="2">
+                    <div class="nested-container-box">
+                        <strong>Containers/Totes:</strong>
+                        <table class="inner-data-table">
+                            <thead>
+                                <tr><th>Container ID</th><th style="text-align: right;">Qty</th></tr>
+                            </thead>
+                            <tbody>${innerRows}</tbody>
+                        </table>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(nestedTr);
+        }
+    }
+
+    function exportToExcel() {
+        if (currentSortedList.length === 0) {
+            alert("No data available to export.");
+            return;
+        }
+
+        let exportData = currentSortedList.map(i => ({
+            "Station/Conveyor": i.station,
+            "Floor Group": i.group,
+            "Type": i.isConveyor ? "Conveyor" : "Dropzone",
+            "Total Quantity": i.qty,
+            "Tote Count": i.toteCount
+        }));
+
+        let worksheet = XLSX.utils.json_to_sheet(exportData);
+        let workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Station Quantities");
+        XLSX.writeFile(workbook, "Station_Quantities_Report.xlsx");
+    }
+
+    function clearAll() {
+        accumulatedDataGlobal = {};
+        currentSortedList = [];
+        expandedStations.clear();
+        document.getElementById("inputBox").value = "";
+        document.getElementById("sortControls").style.display = "none";
+        document.getElementById("grandSummary").style.display = "none";
+
+        ['A2000', 'A3000', 'A4000'].forEach(group => {
+            document.getElementById(`body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} data</td></tr>`;
+            document.getElementById(`badge-${group}`).innerText = `DZ: 0 Units`;
+            document.getElementById(`cv-badge-${group}`).innerText = `CV: 0 Units`;
+
+            let chipContainer = document.getElementById(`chips-${group}`);
+            chipContainer.querySelectorAll('span').forEach(span => {
+                span.innerText = span.getAttribute('data-chip');
+            });
+        });
+    }
+</script>
+
+</body>
+</html>
