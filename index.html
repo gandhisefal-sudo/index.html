@@ -14,7 +14,7 @@
             color: #333;
         }
         .container {
-            max-width: 1450px;
+            max-width: 1600px;
             margin: 0 auto;
             background: #ffffff;
             padding: 25px;
@@ -27,17 +27,9 @@
             border-bottom: 2px solid #e7e9ec;
             padding-bottom: 10px;
         }
-        label {
-            display: block;
-            font-weight: bold;
-            font-size: 0.9rem;
-            margin-top: 10px;
-            margin-bottom: 4px;
-            color: #444;
-        }
         textarea {
             width: 100%;
-            height: 90px;
+            height: 120px;
             padding: 10px;
             border: 1px solid #a6a6a6;
             border-radius: 4px;
@@ -47,7 +39,7 @@
             background-color: #fafafa;
         }
         .btn-group {
-            margin-top: 15px;
+            margin-top: 12px;
             display: flex;
             gap: 10px;
         }
@@ -102,7 +94,6 @@
             overflow: hidden;
         }
 
-        /* Floor Banners Above DZ Header */
         .floor-top-banner {
             background-color: #0f172a;
             color: #ffffff;
@@ -169,22 +160,36 @@
             font-weight: bold;
         }
 
+        /* Split View Table Container */
+        .split-tables-wrapper {
+            display: flex;
+            width: 100%;
+            border-top: 1px solid #e7e9ec;
+        }
+        .split-col {
+            flex: 1;
+            box-sizing: border-box;
+        }
+        .split-col:first-child {
+            border-right: 1px solid #e7e9ec;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: #fff;
         }
         th, td {
-            padding: 10px 12px;
+            padding: 8px 10px;
             text-align: left;
             border-bottom: 1px solid #e7e9ec;
-            font-size: 0.88rem;
+            font-size: 0.82rem;
         }
         th {
             background-color: #f7f9fa;
             color: #555;
             font-weight: 600;
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
         }
 
@@ -201,21 +206,21 @@
         }
         .nested-row { background-color: #fcfdfe; }
         .nested-container-box {
-            padding: 10px;
+            padding: 8px;
             border-left: 3px solid #0066c0;
             background: #f7fafd;
-            margin: 4px 0;
-            font-size: 0.8rem;
+            margin: 2px 0;
+            font-size: 0.78rem;
         }
         .inner-data-table {
             width: 100%;
             margin-top: 5px;
             background: transparent;
         }
-        .inner-data-table th { background: #edf4fa; padding: 6px; }
-        .inner-data-table td { padding: 6px; background: #fff; }
+        .inner-data-table th { background: #edf4fa; padding: 4px; }
+        .inner-data-table td { padding: 4px; background: #fff; }
         .no-data-msg {
-            padding: 20px;
+            padding: 15px;
             text-align: center;
             color: #888;
             font-style: italic;
@@ -237,13 +242,9 @@
 
 <div class="container">
     <h2>📊 Unified 3-Column Accumulator</h2>
-    <p>Paste Conveyors and Dropzone data into their respective inputs below. Data automatically sorts into <strong>Floor 2</strong>, <strong>Floor 3</strong>, or <strong>Floor 4</strong>.</p>
+    <p>Paste station and conveyor data in the text box below. Conveyors and Dropzones will automatically sort into separate side-by-side tables per floor.</p>
     
-    <label for="inputBoxCV">Conveyor Data (CV):</label>
-    <textarea id="inputBoxCV" placeholder="Paste CV Conveyor JSON / Table data here..."></textarea>
-
-    <label for="inputBoxDZ">Dropzone Data (DZ):</label>
-    <textarea id="inputBoxDZ" placeholder="Paste DZ Station JSON / Table data here..."></textarea>
+    <textarea id="inputBox" placeholder="Paste station/conveyor JSON or table data here..."></textarea>
     
     <div class="btn-group">
         <button class="btn-process" onclick="calculateTotals()">Process & Sum Quantities</button>
@@ -281,17 +282,35 @@
                 </div>
                 <span class="floor-total-badge" id="badge-A2000">DZ: 0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A2000">
-                    <tr><td colspan="2" class="no-data-msg">No Floor 2 / A2000 data</td></tr>
-                </tbody>
-            </table>
+
+            <div class="split-tables-wrapper">
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Conveyor</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A2000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Dropzone</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dz-body-A2000">
+                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Floor 3 Column -->
@@ -315,17 +334,35 @@
                 </div>
                 <span class="floor-total-badge" id="badge-A3000">DZ: 0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A3000">
-                    <tr><td colspan="2" class="no-data-msg">No Floor 3 / A3000 data</td></tr>
-                </tbody>
-            </table>
+
+            <div class="split-tables-wrapper">
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Conveyor</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A3000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Dropzone</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dz-body-A3000">
+                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Floor 4 Column -->
@@ -349,17 +386,35 @@
                 </div>
                 <span class="floor-total-badge" id="badge-A4000">DZ: 0 Units</span>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Station / Dropzone</th>
-                        <th style="text-align: right;">Count</th>
-                    </tr>
-                </thead>
-                <tbody id="body-A4000">
-                    <tr><td colspan="2" class="no-data-msg">No Floor 4 / A4000 data</td></tr>
-                </tbody>
-            </table>
+
+            <div class="split-tables-wrapper">
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Conveyor</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cv-body-A4000">
+                            <tr><td colspan="2" class="no-data-msg">No CV data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="split-col">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Dropzone</th>
+                                <th style="text-align: right;">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dz-body-A4000">
+                            <tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -397,16 +452,33 @@
         accumulatedDataGlobal = {};
         currentSortedList = [];
 
-        let cvText = document.getElementById("inputBoxCV").value.trim();
-        let dzText = document.getElementById("inputBoxDZ").value.trim();
+        let rawText = document.getElementById("inputBox").value.trim();
 
-        if (!cvText && !dzText) {
-            alert("Please paste data into at least one input box!");
+        if (!rawText) {
+            alert("Please paste data into the text box!");
             return;
         }
 
-        if (cvText) processRawInput(cvText);
-        if (dzText) processRawInput(dzText);
+        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
+        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
+        let parsedSuccessfully = false;
+
+        if (jsonBlocks.length > 0) {
+            jsonBlocks.forEach(block => {
+                try {
+                    let parsedJson = JSON.parse(block);
+                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
+                    processJsonArray(normalizedArray, accumulatedDataGlobal);
+                    parsedSuccessfully = true;
+                } catch (e) {
+                    console.error("JSON parse error", e);
+                }
+            });
+        }
+
+        if (!parsedSuccessfully) {
+            processTextFallback(sanitizedText, accumulatedDataGlobal);
+        }
 
         currentSortedList = Object.keys(accumulatedDataGlobal).map(key => {
             let itemData = accumulatedDataGlobal[key];
@@ -429,29 +501,6 @@
             document.getElementById("grandSummary").style.display = "flex";
         } else {
             alert("No valid dropzone or conveyor rows were identified.");
-        }
-    }
-
-    function processRawInput(rawText) {
-        let sanitizedText = rawText.replace(/\u00A0/g, ' ').trim();
-        let jsonBlocks = extractTopLevelJSONBlocks(sanitizedText);
-        let parsedSuccessfully = false;
-
-        if (jsonBlocks.length > 0) {
-            jsonBlocks.forEach(block => {
-                try {
-                    let parsedJson = JSON.parse(block);
-                    let normalizedArray = Array.isArray(parsedJson) ? parsedJson : [parsedJson];
-                    processJsonArray(normalizedArray, accumulatedDataGlobal);
-                    parsedSuccessfully = true;
-                } catch (e) {
-                    console.error("JSON parse error", e);
-                }
-            });
-        }
-
-        if (!parsedSuccessfully) {
-            processTextFallback(sanitizedText, accumulatedDataGlobal);
         }
     }
 
@@ -571,7 +620,8 @@
 
     function renderTable() {
         ['A2000', 'A3000', 'A4000'].forEach(group => {
-            document.getElementById(`body-${group}`).innerHTML = '';
+            document.getElementById(`cv-body-${group}`).innerHTML = '';
+            document.getElementById(`dz-body-${group}`).innerHTML = '';
         });
 
         let floorTotals = { A2000: { dz: 0, cv: 0 }, A3000: { dz: 0, cv: 0 }, A4000: { dz: 0, cv: 0 } };
@@ -583,17 +633,24 @@
             if (item.isConveyor) {
                 floorTotals[group].cv += item.qty;
                 conveyorCounts[item.station.toUpperCase()] = item.qty;
+                let cvTbody = document.getElementById(`cv-body-${group}`);
+                renderStationRow(cvTbody, item);
             } else {
                 floorTotals[group].dz += item.qty;
-                let tbody = document.getElementById(`body-${group}`);
-                renderStationRow(tbody, item);
+                let dzTbody = document.getElementById(`dz-body-${group}`);
+                renderStationRow(dzTbody, item);
             }
         });
 
         ['A2000', 'A3000', 'A4000'].forEach(group => {
-            let tbody = document.getElementById(`body-${group}`);
-            if (tbody.children.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} Dropzone data</td></tr>`;
+            let cvTbody = document.getElementById(`cv-body-${group}`);
+            let dzTbody = document.getElementById(`dz-body-${group}`);
+
+            if (cvTbody.children.length === 0) {
+                cvTbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No CV data</td></tr>`;
+            }
+            if (dzTbody.children.length === 0) {
+                dzTbody.innerHTML = `<tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>`;
             }
 
             document.getElementById(`badge-${group}`).innerText = `DZ: ${floorTotals[group].dz} Units`;
@@ -633,7 +690,7 @@
             </td>
             <td style="color: #0066c0; font-weight: bold; text-align: right;">
                 ${item.qty}
-                ${isManual ? '' : `<span class="badge">${item.toteCount} Totes</span>`}
+                ${isManual ? '' : `<span class="badge">${item.toteCount}</span>`}
             </td>
         `;
         tbody.appendChild(tr);
@@ -690,13 +747,13 @@
         accumulatedDataGlobal = {};
         currentSortedList = [];
         expandedStations.clear();
-        document.getElementById("inputBoxCV").value = "";
-        document.getElementById("inputBoxDZ").value = "";
+        document.getElementById("inputBox").value = "";
         document.getElementById("sortControls").style.display = "none";
         document.getElementById("grandSummary").style.display = "none";
 
         ['A2000', 'A3000', 'A4000'].forEach(group => {
-            document.getElementById(`body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No ${group} Dropzone data</td></tr>`;
+            document.getElementById(`cv-body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No CV data</td></tr>`;
+            document.getElementById(`dz-body-${group}`).innerHTML = `<tr><td colspan="2" class="no-data-msg">No DZ data</td></tr>`;
             document.getElementById(`badge-${group}`).innerText = `DZ: 0 Units`;
             document.getElementById(`cv-badge-${group}`).innerText = `CV: 0 Units`;
 
